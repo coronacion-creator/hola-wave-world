@@ -1,0 +1,634 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  public: {
+    Tables: {
+      cursos: {
+        Row: {
+          activo: boolean | null
+          codigo: string
+          created_at: string | null
+          creditos: number | null
+          descripcion: string | null
+          id: string
+          nivel: string | null
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean | null
+          codigo: string
+          created_at?: string | null
+          creditos?: number | null
+          descripcion?: string | null
+          id?: string
+          nivel?: string | null
+          nombre: string
+        }
+        Update: {
+          activo?: boolean | null
+          codigo?: string
+          created_at?: string | null
+          creditos?: number | null
+          descripcion?: string | null
+          id?: string
+          nivel?: string | null
+          nombre?: string
+        }
+        Relationships: []
+      }
+      deudas_estudiantes: {
+        Row: {
+          deuda_pendiente: number | null
+          deuda_total: number | null
+          estudiante_id: string
+          id: string
+          ultima_actualizacion: string | null
+        }
+        Insert: {
+          deuda_pendiente?: number | null
+          deuda_total?: number | null
+          estudiante_id: string
+          id?: string
+          ultima_actualizacion?: string | null
+        }
+        Update: {
+          deuda_pendiente?: number | null
+          deuda_total?: number | null
+          estudiante_id?: string
+          id?: string
+          ultima_actualizacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deudas_estudiantes_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: true
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estado_academico: {
+        Row: {
+          estado: string | null
+          id: string
+          matricula_id: string
+          promedio: number | null
+          ultima_actualizacion: string | null
+        }
+        Insert: {
+          estado?: string | null
+          id?: string
+          matricula_id: string
+          promedio?: number | null
+          ultima_actualizacion?: string | null
+        }
+        Update: {
+          estado?: string | null
+          id?: string
+          matricula_id?: string
+          promedio?: number | null
+          ultima_actualizacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estado_academico_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: true
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      estudiantes: {
+        Row: {
+          apellidos: string
+          created_at: string | null
+          direccion: string | null
+          dni: string
+          email: string | null
+          estado: string | null
+          fecha_nacimiento: string | null
+          id: string
+          nombres: string
+          sede_id: string
+          telefono: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          apellidos: string
+          created_at?: string | null
+          direccion?: string | null
+          dni: string
+          email?: string | null
+          estado?: string | null
+          fecha_nacimiento?: string | null
+          id?: string
+          nombres: string
+          sede_id: string
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          apellidos?: string
+          created_at?: string | null
+          direccion?: string | null
+          dni?: string
+          email?: string | null
+          estado?: string | null
+          fecha_nacimiento?: string | null
+          id?: string
+          nombres?: string
+          sede_id?: string
+          telefono?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estudiantes_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evaluaciones: {
+        Row: {
+          created_at: string | null
+          fecha_evaluacion: string | null
+          id: string
+          matricula_id: string
+          nota: number | null
+          observaciones: string | null
+          peso: number | null
+          tipo_evaluacion: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fecha_evaluacion?: string | null
+          id?: string
+          matricula_id: string
+          nota?: number | null
+          observaciones?: string | null
+          peso?: number | null
+          tipo_evaluacion?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fecha_evaluacion?: string | null
+          id?: string
+          matricula_id?: string
+          nota?: number | null
+          observaciones?: string | null
+          peso?: number | null
+          tipo_evaluacion?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluaciones_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventario: {
+        Row: {
+          activo: boolean | null
+          codigo_material: string
+          created_at: string | null
+          descripcion: string | null
+          id: string
+          nombre: string
+          precio_unitario: number | null
+          sede_id: string
+          stock: number | null
+          tipo_material: string
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          codigo_material: string
+          created_at?: string | null
+          descripcion?: string | null
+          id?: string
+          nombre: string
+          precio_unitario?: number | null
+          sede_id: string
+          stock?: number | null
+          tipo_material: string
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          codigo_material?: string
+          created_at?: string | null
+          descripcion?: string | null
+          id?: string
+          nombre?: string
+          precio_unitario?: number | null
+          sede_id?: string
+          stock?: number | null
+          tipo_material?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matriculas: {
+        Row: {
+          created_at: string | null
+          curso_id: string
+          estado: string | null
+          estudiante_id: string
+          fecha_matricula: string | null
+          id: string
+          periodo_academico: string
+          sede_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          curso_id: string
+          estado?: string | null
+          estudiante_id: string
+          fecha_matricula?: string | null
+          id?: string
+          periodo_academico: string
+          sede_id: string
+        }
+        Update: {
+          created_at?: string | null
+          curso_id?: string
+          estado?: string | null
+          estudiante_id?: string
+          fecha_matricula?: string | null
+          id?: string
+          periodo_academico?: string
+          sede_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matriculas_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pagos: {
+        Row: {
+          concepto: string
+          created_at: string | null
+          estado: string | null
+          estudiante_id: string
+          fecha_pago: string | null
+          id: string
+          metodo_pago: string | null
+          monto: number
+          sede_id: string
+        }
+        Insert: {
+          concepto: string
+          created_at?: string | null
+          estado?: string | null
+          estudiante_id: string
+          fecha_pago?: string | null
+          id?: string
+          metodo_pago?: string | null
+          monto: number
+          sede_id: string
+        }
+        Update: {
+          concepto?: string
+          created_at?: string | null
+          estado?: string | null
+          estudiante_id?: string
+          fecha_pago?: string | null
+          id?: string
+          metodo_pago?: string | null
+          monto?: number
+          sede_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagos_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagos_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sedes: {
+        Row: {
+          activo: boolean | null
+          ciudad: string
+          created_at: string | null
+          direccion: string | null
+          email: string | null
+          id: string
+          nombre: string
+          telefono: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          ciudad: string
+          created_at?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          nombre: string
+          telefono?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          ciudad?: string
+          created_at?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          nombre?: string
+          telefono?: string | null
+        }
+        Relationships: []
+      }
+      ventas_inventario: {
+        Row: {
+          cantidad: number
+          created_at: string | null
+          estudiante_id: string
+          fecha_venta: string | null
+          id: string
+          inventario_id: string
+          precio_total: number
+        }
+        Insert: {
+          cantidad: number
+          created_at?: string | null
+          estudiante_id: string
+          fecha_venta?: string | null
+          id?: string
+          inventario_id: string
+          precio_total: number
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string | null
+          estudiante_id?: string
+          fecha_venta?: string | null
+          id?: string
+          inventario_id?: string
+          precio_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ventas_inventario_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventas_inventario_inventario_id_fkey"
+            columns: ["inventario_id"]
+            isOneToOne: false
+            referencedRelation: "inventario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      matricular_con_validacion: {
+        Args: {
+          p_curso_id: string
+          p_estudiante_id: string
+          p_periodo_academico: string
+          p_sede_id: string
+        }
+        Returns: Json
+      }
+      procesar_pago: {
+        Args: {
+          p_concepto: string
+          p_estudiante_id: string
+          p_metodo_pago: string
+          p_monto: number
+          p_sede_id: string
+        }
+        Returns: Json
+      }
+      registrar_estudiante_y_matricula: {
+        Args: {
+          p_apellidos: string
+          p_curso_id: string
+          p_dni: string
+          p_email: string
+          p_nombres: string
+          p_periodo_academico: string
+          p_sede_id: string
+        }
+        Returns: Json
+      }
+      registrar_evaluacion_y_actualizar_promedio: {
+        Args: {
+          p_fecha_evaluacion: string
+          p_matricula_id: string
+          p_nota: number
+          p_peso: number
+          p_tipo_evaluacion: string
+        }
+        Returns: Json
+      }
+      revertir_pago: {
+        Args: { p_pago_id: string }
+        Returns: Json
+      }
+      vender_material_inventario: {
+        Args: {
+          p_cantidad: number
+          p_estudiante_id: string
+          p_inventario_id: string
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

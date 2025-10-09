@@ -1,11 +1,83 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3 } from "lucide-react";
+import Dashboard from "@/components/Dashboard";
+import Estudiantes from "@/components/Estudiantes";
+import Matriculas from "@/components/Matriculas";
+import Pagos from "@/components/Pagos";
+import Inventario from "@/components/Inventario";
+import Evaluaciones from "@/components/Evaluaciones";
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState("dashboard");
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30 dark:from-background dark:via-blue-950/20 dark:to-green-950/20">
+      <div className="container mx-auto p-4 md:p-6 lg:p-8">
+        <header className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-xl">
+              <GraduationCap className="h-8 w-8 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                EduGlobal S.A.C.
+              </h1>
+              <p className="text-sm text-muted-foreground">Sistema de Gestión Educativa Distribuida</p>
+            </div>
+          </div>
+        </header>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-2 h-auto p-1">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="estudiantes" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Estudiantes</span>
+            </TabsTrigger>
+            <TabsTrigger value="matriculas" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Matrículas</span>
+            </TabsTrigger>
+            <TabsTrigger value="pagos" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Pagos</span>
+            </TabsTrigger>
+            <TabsTrigger value="inventario" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Inventario</span>
+            </TabsTrigger>
+            <TabsTrigger value="evaluaciones" className="flex items-center gap-2">
+              <GraduationCap className="h-4 w-4" />
+              <span className="hidden sm:inline">Evaluaciones</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="mt-6">
+            <TabsContent value="dashboard">
+              <Dashboard />
+            </TabsContent>
+            <TabsContent value="estudiantes">
+              <Estudiantes />
+            </TabsContent>
+            <TabsContent value="matriculas">
+              <Matriculas />
+            </TabsContent>
+            <TabsContent value="pagos">
+              <Pagos />
+            </TabsContent>
+            <TabsContent value="inventario">
+              <Inventario />
+            </TabsContent>
+            <TabsContent value="evaluaciones">
+              <Evaluaciones />
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
     </div>
   );
