@@ -24,6 +24,7 @@ export type Database = {
           id: string
           nivel: string | null
           nombre: string
+          profesor_id: string | null
         }
         Insert: {
           activo?: boolean | null
@@ -34,6 +35,7 @@ export type Database = {
           id?: string
           nivel?: string | null
           nombre: string
+          profesor_id?: string | null
         }
         Update: {
           activo?: boolean | null
@@ -44,8 +46,17 @@ export type Database = {
           id?: string
           nivel?: string | null
           nombre?: string
+          profesor_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cursos_profesor_id_fkey"
+            columns: ["profesor_id"]
+            isOneToOne: false
+            referencedRelation: "profesores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       deudas_estudiantes: {
         Row: {
@@ -364,6 +375,54 @@ export type Database = {
           },
         ]
       }
+      profesores: {
+        Row: {
+          apellidos: string
+          created_at: string
+          direccion: string | null
+          dni: string
+          email: string | null
+          especialidad: string | null
+          estado: string | null
+          fecha_contratacion: string | null
+          id: string
+          nombres: string
+          sede_id: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          apellidos: string
+          created_at?: string
+          direccion?: string | null
+          dni: string
+          email?: string | null
+          especialidad?: string | null
+          estado?: string | null
+          fecha_contratacion?: string | null
+          id?: string
+          nombres: string
+          sede_id: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apellidos?: string
+          created_at?: string
+          direccion?: string | null
+          dni?: string
+          email?: string | null
+          especialidad?: string | null
+          estado?: string | null
+          fecha_contratacion?: string | null
+          id?: string
+          nombres?: string
+          sede_id?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sedes: {
         Row: {
           activo: boolean | null
@@ -447,6 +506,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      asignar_profesor_a_curso: {
+        Args: { p_curso_id: string; p_profesor_id: string }
+        Returns: Json
+      }
       matricular_con_validacion: {
         Args: {
           p_curso_id: string
@@ -454,6 +517,10 @@ export type Database = {
           p_periodo_academico: string
           p_sede_id: string
         }
+        Returns: Json
+      }
+      obtener_estadisticas_curso: {
+        Args: { p_curso_id: string }
         Returns: Json
       }
       procesar_pago: {
