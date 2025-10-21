@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3 } from "lucide-react";
+import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked } from "lucide-react";
 import Dashboard from "@/components/Dashboard";
 import Estudiantes from "@/components/Estudiantes";
 import Matriculas from "@/components/Matriculas";
 import Pagos from "@/components/Pagos";
 import Inventario from "@/components/Inventario";
 import Evaluaciones from "@/components/Evaluaciones";
+import Profesores from "@/components/Profesores";
+import Cursos from "@/components/Cursos";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -30,7 +32,7 @@ const Index = () => {
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-2 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-8 gap-2 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -38,6 +40,14 @@ const Index = () => {
             <TabsTrigger value="estudiantes" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Estudiantes</span>
+            </TabsTrigger>
+            <TabsTrigger value="profesores" className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Profesores</span>
+            </TabsTrigger>
+            <TabsTrigger value="cursos" className="flex items-center gap-2">
+              <BookMarked className="h-4 w-4" />
+              <span className="hidden sm:inline">Cursos</span>
             </TabsTrigger>
             <TabsTrigger value="matriculas" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
@@ -63,6 +73,12 @@ const Index = () => {
             </TabsContent>
             <TabsContent value="estudiantes">
               <Estudiantes />
+            </TabsContent>
+            <TabsContent value="profesores">
+              <Profesores />
+            </TabsContent>
+            <TabsContent value="cursos">
+              <Cursos />
             </TabsContent>
             <TabsContent value="matriculas">
               <Matriculas />
