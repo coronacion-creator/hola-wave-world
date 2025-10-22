@@ -1,100 +1,51 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked } from "lucide-react";
-import Dashboard from "@/components/Dashboard";
-import Estudiantes from "@/components/Estudiantes";
-import Matriculas from "@/components/Matriculas";
-import Pagos from "@/components/Pagos";
-import Inventario from "@/components/Inventario";
-import Evaluaciones from "@/components/Evaluaciones";
-import Profesores from "@/components/Profesores";
-import Cursos from "@/components/Cursos";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+
+      // Get user role and redirect accordingly
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (roleData) {
+        switch (roleData.role) {
+          case "admin":
+            navigate("/admin");
+            break;
+          case "teacher":
+            navigate("/teacher");
+            break;
+          case "student":
+            navigate("/student");
+            break;
+          default:
+            navigate("/auth");
+        }
+      } else {
+        navigate("/auth");
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30 dark:from-background dark:via-blue-950/20 dark:to-green-950/20">
-      <div className="container mx-auto p-4 md:p-6 lg:p-8">
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-xl">
-              <GraduationCap className="h-8 w-8 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                EduGlobal S.A.C.
-              </h1>
-              <p className="text-sm text-muted-foreground">Sistema de Gestión Educativa Distribuida</p>
-            </div>
-          </div>
-        </header>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 md:grid-cols-8 gap-2 h-auto p-1">
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="estudiantes" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Estudiantes</span>
-            </TabsTrigger>
-            <TabsTrigger value="profesores" className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4" />
-              <span className="hidden sm:inline">Profesores</span>
-            </TabsTrigger>
-            <TabsTrigger value="cursos" className="flex items-center gap-2">
-              <BookMarked className="h-4 w-4" />
-              <span className="hidden sm:inline">Cursos</span>
-            </TabsTrigger>
-            <TabsTrigger value="matriculas" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Matrículas</span>
-            </TabsTrigger>
-            <TabsTrigger value="pagos" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="hidden sm:inline">Pagos</span>
-            </TabsTrigger>
-            <TabsTrigger value="inventario" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Inventario</span>
-            </TabsTrigger>
-            <TabsTrigger value="evaluaciones" className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" />
-              <span className="hidden sm:inline">Evaluaciones</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="mt-6">
-            <TabsContent value="dashboard">
-              <Dashboard />
-            </TabsContent>
-            <TabsContent value="estudiantes">
-              <Estudiantes />
-            </TabsContent>
-            <TabsContent value="profesores">
-              <Profesores />
-            </TabsContent>
-            <TabsContent value="cursos">
-              <Cursos />
-            </TabsContent>
-            <TabsContent value="matriculas">
-              <Matriculas />
-            </TabsContent>
-            <TabsContent value="pagos">
-              <Pagos />
-            </TabsContent>
-            <TabsContent value="inventario">
-              <Inventario />
-            </TabsContent>
-            <TabsContent value="evaluaciones">
-              <Evaluaciones />
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
+    <div className="min-h-screen flex items-center justify-center">
+      <p className="text-muted-foreground">Redirigiendo...</p>
     </div>
   );
 };

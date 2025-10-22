@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      asistencias: {
+        Row: {
+          created_at: string | null
+          fecha: string
+          id: string
+          justificacion: string | null
+          matricula_id: string
+          presente: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          fecha: string
+          id?: string
+          justificacion?: string | null
+          matricula_id: string
+          presente?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          fecha?: string
+          id?: string
+          justificacion?: string | null
+          matricula_id?: string
+          presente?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asistencias_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cursos: {
         Row: {
           activo: boolean | null
@@ -215,6 +250,44 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      horarios: {
+        Row: {
+          aula: string | null
+          created_at: string | null
+          curso_id: string
+          dia_semana: number
+          hora_fin: string
+          hora_inicio: string
+          id: string
+        }
+        Insert: {
+          aula?: string | null
+          created_at?: string | null
+          curso_id: string
+          dia_semana: number
+          hora_fin: string
+          hora_inicio: string
+          id?: string
+        }
+        Update: {
+          aula?: string | null
+          created_at?: string | null
+          curso_id?: string
+          dia_semana?: number
+          hora_fin?: string
+          hora_inicio?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horarios_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
             referencedColumns: ["id"]
           },
         ]
@@ -423,6 +496,48 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string | null
+          estudiante_id: string | null
+          id: string
+          profesor_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          estudiante_id?: string | null
+          id?: string
+          profesor_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          estudiante_id?: string | null
+          id?: string
+          profesor_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_profesor_id_fkey"
+            columns: ["profesor_id"]
+            isOneToOne: false
+            referencedRelation: "profesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sedes: {
         Row: {
           activo: boolean | null
@@ -453,6 +568,27 @@ export type Database = {
           id?: string
           nombre?: string
           telefono?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -510,6 +646,17 @@ export type Database = {
         Args: { p_curso_id: string; p_profesor_id: string }
         Returns: Json
       }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       matricular_con_validacion: {
         Args: {
           p_curso_id: string
@@ -555,10 +702,7 @@ export type Database = {
         }
         Returns: Json
       }
-      revertir_pago: {
-        Args: { p_pago_id: string }
-        Returns: Json
-      }
+      revertir_pago: { Args: { p_pago_id: string }; Returns: Json }
       vender_material_inventario: {
         Args: {
           p_cantidad: number
@@ -569,7 +713,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "teacher" | "student"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -696,6 +840,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "teacher", "student"],
+    },
   },
 } as const
