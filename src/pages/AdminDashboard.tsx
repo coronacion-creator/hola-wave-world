@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked } from "lucide-react";
+import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/components/Dashboard";
 import Estudiantes from "@/components/Estudiantes";
 import Matriculas from "@/components/Matriculas";
@@ -11,24 +13,29 @@ import Evaluaciones from "@/components/Evaluaciones";
 import Profesores from "@/components/Profesores";
 import Cursos from "@/components/Cursos";
 
-const Index = () => {
+const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30 dark:from-background dark:via-blue-950/20 dark:to-green-950/20">
       <div className="container mx-auto p-4 md:p-6 lg:p-8">
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+        <header className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-primary to-primary/80 rounded-xl">
               <GraduationCap className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                EduGlobal S.A.C.
+                Panel de Administración
               </h1>
               <p className="text-sm text-muted-foreground">Sistema de Gestión Educativa Distribuida</p>
             </div>
           </div>
+          <Button variant="outline" onClick={signOut}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Cerrar Sesión
+          </Button>
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -99,4 +106,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default AdminDashboard;
