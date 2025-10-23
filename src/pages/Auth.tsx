@@ -3,14 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { GraduationCap } from "lucide-react";
+
+type UserRole = 'admin' | 'teacher' | 'student';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("student");
   const [loading, setLoading] = useState(false);
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
@@ -29,7 +33,7 @@ const Auth = () => {
         });
       }
     } else {
-      const { error } = await signUp(email, password, 'student');
+      const { error } = await signUp(email, password, selectedRole);
       if (error) {
         toast({
           title: "Error",
@@ -63,6 +67,19 @@ const Auth = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="role">Tipo de Usuario</Label>
+              <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as UserRole)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona tu rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="student">Estudiante</SelectItem>
+                  <SelectItem value="teacher">Profesor</SelectItem>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Correo Electrónico</Label>
               <Input

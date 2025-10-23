@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked, LogOut } from "lucide-react";
+import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked, LogOut, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/components/Dashboard";
@@ -12,6 +12,7 @@ import Inventario from "@/components/Inventario";
 import Evaluaciones from "@/components/Evaluaciones";
 import Profesores from "@/components/Profesores";
 import Cursos from "@/components/Cursos";
+import GestionUsuarios from "@/components/GestionUsuarios";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -39,10 +40,14 @@ const AdminDashboard = () => {
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 md:grid-cols-8 gap-2 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-9 gap-2 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="usuarios" className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">Usuarios</span>
             </TabsTrigger>
             <TabsTrigger value="estudiantes" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -77,6 +82,9 @@ const AdminDashboard = () => {
           <div className="mt-6">
             <TabsContent value="dashboard">
               <Dashboard />
+            </TabsContent>
+            <TabsContent value="usuarios">
+              <GestionUsuarios />
             </TabsContent>
             <TabsContent value="estudiantes">
               <Estudiantes />
