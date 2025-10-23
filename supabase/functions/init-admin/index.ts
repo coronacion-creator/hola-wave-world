@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
       }
     })
 
-    const adminEmail = 'admin@admin.com'
+    const adminEmail = 'admin@gmail.com'
     const adminPassword = 'admin'
 
     // Check if admin user already exists
