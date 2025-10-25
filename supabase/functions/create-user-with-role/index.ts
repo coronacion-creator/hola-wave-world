@@ -12,13 +12,41 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, password, role } = await req.json()
+    const { email, password, role, profesor_id, estudiante_id } = await req.json()
 
     if (!email || !password || !role) {
       return new Response(
         JSON.stringify({ 
           success: false, 
           message: 'Email, contraseña y rol son requeridos' 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
+    // Validate that profesor_id is provided for teacher role
+    if (role === 'teacher' && !profesor_id) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'Debe proporcionar un profesor_id para el rol de profesor' 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+    
+    // Validate that estudiante_id is provided for student role
+    if (role === 'student' && !estudiante_id) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'Debe proporcionar un estudiante_id para el rol de estudiante' 
         }),
         { 
           status: 400,
@@ -88,19 +116,29 @@ Deno.serve(async (req) => {
 
     console.log('Role assigned:', role)
 
-    // Create profile
+    // Create profile with linked profesor_id or estudiante_id
+    const profileData: any = {
+      user_id: authData.user.id
+    }
+    
+    if (role === 'teacher' && profesor_id) {
+      profileData.profesor_id = profesor_id
+    }
+    
+    if (role === 'student' && estudiante_id) {
+      profileData.estudiante_id = estudiante_id
+    }
+    
     const { error: profileError } = await supabase
       .from('profiles')
-      .insert({
-        user_id: authData.user.id
-      })
+      .insert(profileData)
 
     if (profileError) {
       console.error('Profile error:', profileError)
       throw profileError
     }
 
-    console.log('Profile created')
+    console.log('Profile created with links:', profileData)
 
     return new Response(
       JSON.stringify({ 

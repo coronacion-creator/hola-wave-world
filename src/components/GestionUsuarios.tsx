@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,15 +10,79 @@ import { UserPlus, Loader2 } from "lucide-react";
 
 type UserRole = 'admin' | 'teacher' | 'student';
 
+interface Profesor {
+  id: string;
+  nombres: string;
+  apellidos: string;
+  dni: string;
+}
+
+interface Estudiante {
+  id: string;
+  nombres: string;
+  apellidos: string;
+  dni: string;
+}
+
 const GestionUsuarios = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("student");
+  const [profesorId, setProfesorId] = useState<string>("");
+  const [estudianteId, setEstudianteId] = useState<string>("");
+  const [profesores, setProfesores] = useState<Profesor[]>([]);
+  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadProfesoresYEstudiantes();
+  }, []);
+
+  const loadProfesoresYEstudiantes = async () => {
+    setLoadingData(true);
+    try {
+      const [profesoresResult, estudiantesResult] = await Promise.all([
+        supabase.from('profesores').select('id, nombres, apellidos, dni').eq('estado', 'activo'),
+        supabase.from('estudiantes').select('id, nombres, apellidos, dni').eq('estado', 'activo')
+      ]);
+
+      if (profesoresResult.data) setProfesores(profesoresResult.data);
+      if (estudiantesResult.data) setEstudiantes(estudiantesResult.data);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validar que se haya seleccionado un profesor o estudiante según el rol
+    if (role === 'teacher' && !profesorId) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un profesor",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (role === 'student' && !estudianteId) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un estudiante",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -27,7 +91,9 @@ const GestionUsuarios = () => {
         body: {
           email,
           password,
-          role
+          role,
+          profesor_id: role === 'teacher' ? profesorId : undefined,
+          estudiante_id: role === 'student' ? estudianteId : undefined
         }
       });
 
@@ -41,6 +107,8 @@ const GestionUsuarios = () => {
         setEmail("");
         setPassword("");
         setRole("student");
+        setProfesorId("");
+        setEstudianteId("");
       } else {
         throw new Error(data.message || "Error al crear usuario");
       }
@@ -94,7 +162,11 @@ const GestionUsuarios = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Rol</Label>
-              <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
+              <Select value={role} onValueChange={(value) => {
+                setRole(value as UserRole);
+                setProfesorId("");
+                setEstudianteId("");
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un rol" />
                 </SelectTrigger>
@@ -105,6 +177,42 @@ const GestionUsuarios = () => {
                 </SelectContent>
               </Select>
             </div>
+            
+            {role === 'teacher' && (
+              <div className="space-y-2">
+                <Label htmlFor="profesor">Vincular con Profesor</Label>
+                <Select value={profesorId} onValueChange={setProfesorId} disabled={loadingData}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingData ? "Cargando..." : "Selecciona un profesor"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profesores.map((prof) => (
+                      <SelectItem key={prof.id} value={prof.id}>
+                        {prof.nombres} {prof.apellidos} - DNI: {prof.dni}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {role === 'student' && (
+              <div className="space-y-2">
+                <Label htmlFor="estudiante">Vincular con Estudiante</Label>
+                <Select value={estudianteId} onValueChange={setEstudianteId} disabled={loadingData}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingData ? "Cargando..." : "Selecciona un estudiante"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {estudiantes.map((est) => (
+                      <SelectItem key={est.id} value={est.id}>
+                        {est.nombres} {est.apellidos} - DNI: {est.dni}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
