@@ -1,13 +1,92 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, BookOpen, ClipboardCheck, BarChart3, LogOut } from "lucide-react";
+import { GraduationCap, BookOpen, ClipboardCheck, BarChart3, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Curso {
+  id: string;
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+  nivel: string;
+  creditos: number;
+  estudiantes_count?: number;
+}
 
 const TeacherDashboard = () => {
   const [activeTab, setActiveTab] = useState("cursos");
-  const { signOut } = useAuth();
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { signOut, user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      loadCursosProfesor();
+    }
+  }, [user]);
+
+  const loadCursosProfesor = async () => {
+    try {
+      setLoading(true);
+      
+      // Get profile to find profesor_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('profesor_id')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (!profile?.profesor_id) {
+        toast({
+          title: "Error",
+          description: "No se encontró perfil de profesor vinculado",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get cursos assigned to this profesor
+      const { data: cursosData, error } = await supabase
+        .from('cursos')
+        .select('*')
+        .eq('profesor_id', profile.profesor_id)
+        .eq('activo', true);
+
+      if (error) throw error;
+
+      // Get student count for each curso
+      const cursosConEstudiantes = await Promise.all(
+        (cursosData || []).map(async (curso) => {
+          const { count } = await supabase
+            .from('matriculas')
+            .select('*', { count: 'exact', head: true })
+            .eq('curso_id', curso.id)
+            .eq('estado', 'activa');
+
+          return {
+            ...curso,
+            estudiantes_count: count || 0
+          };
+        })
+      );
+
+      setCursos(cursosConEstudiantes);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los cursos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30 dark:from-background dark:via-blue-950/20 dark:to-green-950/20">
@@ -60,7 +139,46 @@ const TeacherDashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">Contenido en desarrollo...</p>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : cursos.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No tienes cursos asignados actualmente
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {cursos.map((curso) => (
+                        <Card key={curso.id} className="hover:shadow-lg transition-shadow">
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{curso.nombre}</CardTitle>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {curso.codigo}
+                                </p>
+                              </div>
+                              <Badge variant="secondary">{curso.nivel}</Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              {curso.descripcion || 'Sin descripción'}
+                            </p>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                {curso.creditos} créditos
+                              </span>
+                              <span className="font-medium">
+                                {curso.estudiantes_count || 0} estudiantes
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
