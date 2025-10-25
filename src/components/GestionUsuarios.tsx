@@ -81,29 +81,26 @@ const GestionUsuarios = () => {
   const loadUsers = async () => {
     setLoadingUsers(true);
     try {
-      const { data: userRolesData, error } = await supabase
+      // Get user roles
+      const { data: userRolesData, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          role,
-          created_at,
-          profiles!inner(
-            user_id,
-            profesor_id,
-            estudiante_id
-          )
-        `);
+        .select('user_id, role, created_at');
 
-      if (error) throw error;
+      if (rolesError) throw rolesError;
 
       // Get auth users emails
       const { data } = await supabase.auth.admin.listUsers();
       const authUsers = data.users;
       
+      // Get all profiles
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, profesor_id, estudiante_id');
+      
       const usersWithDetails = await Promise.all(
         (userRolesData || []).map(async (ur: any) => {
           const authUser = authUsers?.find((u: any) => u.id === ur.user_id);
-          const profile = ur.profiles;
+          const profile = profilesData?.find((p: any) => p.user_id === ur.user_id);
           
           let profesor_nombre, estudiante_nombre;
           
