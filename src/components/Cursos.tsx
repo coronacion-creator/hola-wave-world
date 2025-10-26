@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { BookOpen, Plus, Users, UserCheck } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Collapsible,
@@ -44,6 +44,27 @@ const Cursos = () => {
       return data;
     },
   });
+
+  // Generar código automático cuando se abre el diálogo
+  useEffect(() => {
+    if (open && cursos) {
+      const generarCodigo = () => {
+        if (cursos.length === 0) return "001";
+        
+        // Obtener todos los códigos numéricos
+        const codigos = cursos
+          .map(c => parseInt(c.codigo))
+          .filter(num => !isNaN(num))
+          .sort((a, b) => b - a);
+        
+        const ultimoCodigo = codigos[0] || 0;
+        const nuevoCodigo = (ultimoCodigo + 1).toString().padStart(3, "0");
+        return nuevoCodigo;
+      };
+      
+      setFormData(prev => ({ ...prev, codigo: generarCodigo() }));
+    }
+  }, [open, cursos]);
 
   const { data: profesores } = useQuery({
     queryKey: ["profesores"],
@@ -164,11 +185,12 @@ const Cursos = () => {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="codigo">Código</Label>
+                  <Label htmlFor="codigo">Código (Generado automáticamente)</Label>
                   <Input
                     id="codigo"
                     value={formData.codigo}
-                    onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+                    readOnly
+                    className="bg-muted"
                     required
                   />
                 </div>
@@ -200,11 +222,15 @@ const Cursos = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="nivel">Nivel</Label>
-                  <Input
-                    id="nivel"
-                    value={formData.nivel}
-                    onChange={(e) => setFormData({ ...formData, nivel: e.target.value })}
-                  />
+                  <Select value={formData.nivel} onValueChange={(value) => setFormData({ ...formData, nivel: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione un nivel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="INICIAL">INICIAL</SelectItem>
+                      <SelectItem value="PRIMARIA">PRIMARIA</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button type="submit" className="w-full">
                   Registrar Curso
