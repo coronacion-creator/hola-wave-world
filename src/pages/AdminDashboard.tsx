@@ -13,6 +13,7 @@ import Evaluaciones from "@/components/Evaluaciones";
 import Profesores from "@/components/Profesores";
 import Cursos from "@/components/Cursos";
 import GestionUsuarios from "@/components/GestionUsuarios";
+import { Grados } from "@/components/Grados";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -40,7 +41,7 @@ const AdminDashboard = () => {
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 md:grid-cols-9 gap-2 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-10 gap-2 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -77,6 +78,10 @@ const AdminDashboard = () => {
               <GraduationCap className="h-4 w-4" />
               <span className="hidden sm:inline">Evaluaciones</span>
             </TabsTrigger>
+            <TabsTrigger value="grados" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Grados</span>
+            </TabsTrigger>
           </TabsList>
 
           <div className="mt-6">
@@ -106,6 +111,9 @@ const AdminDashboard = () => {
             </TabsContent>
             <TabsContent value="evaluaciones">
               <Evaluaciones />
+            </TabsContent>
+            <TabsContent value="grados">
+              <Grados />
             </TabsContent>
           </div>
         </Tabs>

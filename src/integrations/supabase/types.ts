@@ -56,6 +56,7 @@ export type Database = {
           created_at: string | null
           creditos: number | null
           descripcion: string | null
+          grado_seccion_id: string | null
           id: string
           nivel: string | null
           nombre: string
@@ -67,6 +68,7 @@ export type Database = {
           created_at?: string | null
           creditos?: number | null
           descripcion?: string | null
+          grado_seccion_id?: string | null
           id?: string
           nivel?: string | null
           nombre: string
@@ -78,12 +80,20 @@ export type Database = {
           created_at?: string | null
           creditos?: number | null
           descripcion?: string | null
+          grado_seccion_id?: string | null
           id?: string
           nivel?: string | null
           nombre?: string
           profesor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "cursos_grado_seccion_id_fkey"
+            columns: ["grado_seccion_id"]
+            isOneToOne: false
+            referencedRelation: "grados_secciones"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cursos_profesor_id_fkey"
             columns: ["profesor_id"]
@@ -254,6 +264,41 @@ export type Database = {
           },
         ]
       }
+      grados_secciones: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          grado: string
+          id: string
+          seccion: string
+          sede_id: string
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          grado: string
+          id?: string
+          seccion: string
+          sede_id: string
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          grado?: string
+          id?: string
+          seccion?: string
+          sede_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grados_secciones_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       horarios: {
         Row: {
           aula: string | null
@@ -349,6 +394,7 @@ export type Database = {
           estado: string | null
           estudiante_id: string
           fecha_matricula: string | null
+          grado_seccion_id: string | null
           id: string
           periodo_academico: string
           sede_id: string
@@ -359,6 +405,7 @@ export type Database = {
           estado?: string | null
           estudiante_id: string
           fecha_matricula?: string | null
+          grado_seccion_id?: string | null
           id?: string
           periodo_academico: string
           sede_id: string
@@ -369,6 +416,7 @@ export type Database = {
           estado?: string | null
           estudiante_id?: string
           fecha_matricula?: string | null
+          grado_seccion_id?: string | null
           id?: string
           periodo_academico?: string
           sede_id?: string
@@ -386,6 +434,13 @@ export type Database = {
             columns: ["estudiante_id"]
             isOneToOne: false
             referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_grado_seccion_id_fkey"
+            columns: ["grado_seccion_id"]
+            isOneToOne: false
+            referencedRelation: "grados_secciones"
             referencedColumns: ["id"]
           },
           {
