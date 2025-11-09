@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, Plus, Users } from "lucide-react";
+import { BookOpen, Plus, Users, Award } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -15,6 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 
 const Cursos = () => {
   const { toast } = useToast();
@@ -82,7 +83,7 @@ const Cursos = () => {
   const { data: estadisticas } = useQuery({
     queryKey: ["estadisticas-cursos"],
     queryFn: async () => {
-      const stats: Record<string, { total_estudiantes: number; promedio_general: number }> = {};
+      const stats: Record<string, { total_estudiantes: number }> = {};
       if (!cursos) return stats;
 
       for (const curso of cursos) {
@@ -90,12 +91,49 @@ const Cursos = () => {
           p_curso_id: curso.id,
         });
         if (!error && data) {
-          stats[curso.id] = data as { total_estudiantes: number; promedio_general: number };
+          stats[curso.id] = data as { total_estudiantes: number };
         }
       }
       return stats;
     },
     enabled: !!cursos,
+  });
+
+  const { data: competenciasPorCurso } = useQuery({
+    queryKey: ["competencias-por-curso"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("salon_cursos")
+        .select(`
+          curso_id,
+          competencias(
+            id,
+            nombre,
+            descripcion,
+            porcentaje
+          )
+        `)
+        .eq("activo", true);
+      
+      if (error) throw error;
+
+      // Agrupar competencias por curso_id
+      const competenciasByCurso: Record<string, any[]> = {};
+      data?.forEach((sc: any) => {
+        if (sc.competencias && sc.curso_id) {
+          if (!competenciasByCurso[sc.curso_id]) {
+            competenciasByCurso[sc.curso_id] = [];
+          }
+          if (Array.isArray(sc.competencias)) {
+            competenciasByCurso[sc.curso_id].push(...sc.competencias);
+          } else {
+            competenciasByCurso[sc.curso_id].push(sc.competencias);
+          }
+        }
+      });
+      
+      return competenciasByCurso;
+    },
   });
 
   const createCurso = useMutation({
@@ -200,6 +238,12 @@ const Cursos = () => {
             {cursos?.map((curso) => {
               const estudiantesCurso = matriculas?.filter((m) => m.curso_id === curso.id) || [];
               const stats = estadisticas?.[curso.id];
+              const competencias = competenciasPorCurso?.[curso.id] || [];
+              
+              // Eliminar duplicados de competencias por id
+              const competenciasUnicas = Array.from(
+                new Map(competencias.map((c: any) => [c.id, c])).values()
+              );
               
               return (
                 <Collapsible key={curso.id}>
@@ -219,43 +263,69 @@ const Cursos = () => {
                         <Users className="h-4 w-4 text-primary" />
                         <span>Estudiantes: {stats?.total_estudiantes || 0}</span>
                       </div>
-                        {stats?.promedio_general !== undefined && (
-                          <div className="flex items-center gap-1">
-                            <span>Promedio General: </span>
-                            <span className={`font-semibold ${
-                              stats.promedio_general >= 10.5 ? "text-green-600" : "text-red-600"
-                            }`}>
-                              {stats.promedio_general.toFixed(2)}
-                            </span>
-                          </div>
-                        )}
+                      <div className="flex items-center gap-1">
+                        <Award className="h-4 w-4 text-primary" />
+                        <span>Competencias: {competenciasUnicas.length}</span>
                       </div>
+                    </div>
                     </CardHeader>
                     <CollapsibleContent>
-                      <CardContent>
-                        <h4 className="font-semibold mb-2">Estudiantes Matriculados:</h4>
-                        {estudiantesCurso.length > 0 ? (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>DNI</TableHead>
-                                <TableHead>Nombres</TableHead>
-                                <TableHead>Apellidos</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {estudiantesCurso.map((matricula) => (
-                                <TableRow key={matricula.id}>
-                                  <TableCell>{matricula.estudiantes?.dni}</TableCell>
-                                  <TableCell>{matricula.estudiantes?.nombres}</TableCell>
-                                  <TableCell>{matricula.estudiantes?.apellidos}</TableCell>
+                      <CardContent className="space-y-6">
+                        <div>
+                          <h4 className="font-semibold mb-3">Competencias Asignadas:</h4>
+                          {competenciasUnicas.length > 0 ? (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Competencia</TableHead>
+                                  <TableHead>Descripción</TableHead>
+                                  <TableHead>Porcentaje</TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        ) : (
-                          <p className="text-muted-foreground">No hay estudiantes matriculados</p>
-                        )}
+                              </TableHeader>
+                              <TableBody>
+                                {competenciasUnicas.map((comp: any) => (
+                                  <TableRow key={comp.id}>
+                                    <TableCell className="font-medium">{comp.nombre}</TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                      {comp.descripcion || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="secondary">{comp.porcentaje}%</Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          ) : (
+                            <p className="text-muted-foreground text-sm">No hay competencias asignadas a este curso</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <h4 className="font-semibold mb-3">Estudiantes Matriculados:</h4>
+                          {estudiantesCurso.length > 0 ? (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>DNI</TableHead>
+                                  <TableHead>Nombres</TableHead>
+                                  <TableHead>Apellidos</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {estudiantesCurso.map((matricula) => (
+                                  <TableRow key={matricula.id}>
+                                    <TableCell>{matricula.estudiantes?.dni}</TableCell>
+                                    <TableCell>{matricula.estudiantes?.nombres}</TableCell>
+                                    <TableCell>{matricula.estudiantes?.apellidos}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          ) : (
+                            <p className="text-muted-foreground text-sm">No hay estudiantes matriculados</p>
+                          )}
+                        </div>
                       </CardContent>
                     </CollapsibleContent>
                   </Card>
