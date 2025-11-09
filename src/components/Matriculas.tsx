@@ -18,7 +18,7 @@ const Matriculas = () => {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [formData, setFormData] = useState({
     estudiante_id: "",
-    curso_id: "",
+    grado_seccion_id: "",
     sede_id: "",
     periodo_academico: "",
     plan_pago_id: "",
@@ -32,7 +32,7 @@ const Matriculas = () => {
         .select(`
           *,
           estudiantes(nombres, apellidos, dni),
-          cursos(nombre, codigo),
+          grados_secciones(grado, seccion, nivel),
           sedes(nombre, ciudad),
           planes_pago(nombre, total, pagado, restante)
         `)
@@ -53,11 +53,11 @@ const Matriculas = () => {
     },
   });
 
-  const { data: cursos } = useQuery({
-    queryKey: ["cursos"],
+  const { data: gradosSecciones } = useQuery({
+    queryKey: ["grados-secciones"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("cursos")
+        .from("grados_secciones")
         .select("*")
         .eq("activo", true);
       return data || [];
@@ -99,25 +99,26 @@ const Matriculas = () => {
 
   const createMutation = useMutation({
     mutationFn: async (newMatricula: typeof formData) => {
-      const { data, error } = await supabase.rpc("matricular_con_validacion", {
-        p_estudiante_id: newMatricula.estudiante_id,
-        p_curso_id: newMatricula.curso_id,
-        p_sede_id: newMatricula.sede_id,
-        p_periodo_academico: newMatricula.periodo_academico,
-      });
-      if (error) throw error;
+      const { data: matriculaData, error: matriculaError } = await supabase
+        .from("matriculas")
+        .insert({
+          estudiante_id: newMatricula.estudiante_id,
+          curso_id: null as any,
+          grado_seccion_id: newMatricula.grado_seccion_id,
+          sede_id: newMatricula.sede_id,
+          periodo_academico: newMatricula.periodo_academico,
+          plan_pago_id: newMatricula.plan_pago_id || null,
+        })
+        .select()
+        .single();
       
-      const result = data as any;
-      // Si hay plan de pago seleccionado, actualizar la matrícula
-      if (newMatricula.plan_pago_id && result.success) {
-        const { error: updateError } = await supabase
-          .from("matriculas")
-          .update({ plan_pago_id: newMatricula.plan_pago_id })
-          .eq("id", result.matricula_id);
-        if (updateError) throw updateError;
-      }
+      if (matriculaError) throw matriculaError;
       
-      return result;
+      return {
+        success: true,
+        matricula_id: matriculaData.id,
+        message: "Matrícula registrada exitosamente"
+      };
     },
     onSuccess: (data: any) => {
       if (data.success) {
@@ -126,7 +127,7 @@ const Matriculas = () => {
         setOpen(false);
         setFormData({
           estudiante_id: "",
-          curso_id: "",
+          grado_seccion_id: "",
           sede_id: "",
           periodo_academico: "",
           plan_pago_id: "",
@@ -206,18 +207,18 @@ const Matriculas = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="curso">Curso</Label>
+                  <Label htmlFor="grado">Grado y Sección</Label>
                   <Select
-                    value={formData.curso_id}
-                    onValueChange={(value) => setFormData({ ...formData, curso_id: value })}
+                    value={formData.grado_seccion_id}
+                    onValueChange={(value) => setFormData({ ...formData, grado_seccion_id: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccione curso" />
+                      <SelectValue placeholder="Seleccione grado y sección" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cursos?.map((curso) => (
-                        <SelectItem key={curso.id} value={curso.id}>
-                          {curso.codigo} - {curso.nombre}
+                      {gradosSecciones?.map((gs) => (
+                        <SelectItem key={gs.id} value={gs.id}>
+                          {gs.nivel} - {gs.grado} "{gs.seccion}"
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -293,7 +294,7 @@ const Matriculas = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Estudiante</TableHead>
-                <TableHead>Curso</TableHead>
+                <TableHead>Grado y Sección</TableHead>
                 <TableHead>Sede</TableHead>
                 <TableHead>Periodo</TableHead>
                 <TableHead>Plan de Pago</TableHead>
@@ -308,7 +309,7 @@ const Matriculas = () => {
                     {matricula.estudiantes?.nombres} {matricula.estudiantes?.apellidos}
                   </TableCell>
                   <TableCell>
-                    {matricula.cursos?.codigo} - {matricula.cursos?.nombre}
+                    {matricula.grados_secciones?.nivel} - {matricula.grados_secciones?.grado} "{matricula.grados_secciones?.seccion}"
                   </TableCell>
                   <TableCell>
                     {matricula.sedes?.nombre}

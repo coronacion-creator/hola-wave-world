@@ -26,7 +26,6 @@ const PlanesPago = () => {
     nombre: "",
     ciclo_academico_id: "",
     nivel: "",
-    estudiante_id: "",
   });
 
   const { data: planes, isLoading } = useQuery({
@@ -36,8 +35,7 @@ const PlanesPago = () => {
         .from("planes_pago")
         .select(`
           *,
-          ciclos_academicos(nombre),
-          estudiantes(nombres, apellidos, dni)
+          ciclos_academicos(nombre)
         `)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -56,16 +54,6 @@ const PlanesPago = () => {
     },
   });
 
-  const { data: estudiantes } = useQuery({
-    queryKey: ["estudiantes-planes"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("estudiantes")
-        .select("*")
-        .eq("estado", "activo");
-      return data || [];
-    },
-  });
 
   const createPlanMutation = useMutation({
     mutationFn: async (newPlan: typeof formData) => {
@@ -148,12 +136,11 @@ const PlanesPago = () => {
       setCuotas([]);
       setSelectedPlan(null);
       queryClient.invalidateQueries({ queryKey: ["planes-pago"] });
-      setFormData({
-        nombre: "",
-        ciclo_academico_id: "",
-        nivel: "",
-        estudiante_id: "",
-      });
+        setFormData({
+          nombre: "",
+          ciclo_academico_id: "",
+          nivel: "",
+        });
     } catch (error: any) {
       toast.error(`Error: ${error.message}`);
     }
@@ -240,29 +227,11 @@ const PlanesPago = () => {
                         <SelectItem value="INICIAL">INICIAL</SelectItem>
                         <SelectItem value="PRIMARIA">PRIMARIA</SelectItem>
                       </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="estudiante">Estudiante</Label>
-                    <Select
-                      value={formData.estudiante_id}
-                      onValueChange={(value) => setFormData({ ...formData, estudiante_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione estudiante" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {estudiantes?.map((est) => (
-                          <SelectItem key={est.id} value={est.id}>
-                            {est.nombres} {est.apellidos} - DNI: {est.dni}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button type="submit" className="w-full">
-                    Crear Plan
-                  </Button>
+                  </Select>
+                </div>
+                <Button type="submit" className="w-full">
+                  Crear Plan
+                </Button>
                 </form>
               ) : (
                 <div className="space-y-4">
@@ -375,7 +344,6 @@ const PlanesPago = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
-                <TableHead>Estudiante</TableHead>
                 <TableHead>Ciclo</TableHead>
                 <TableHead>Nivel</TableHead>
                 <TableHead>Total</TableHead>
@@ -388,9 +356,6 @@ const PlanesPago = () => {
               {planes?.map((plan) => (
                 <TableRow key={plan.id}>
                   <TableCell className="font-medium">{plan.nombre}</TableCell>
-                  <TableCell>
-                    {plan.estudiantes?.nombres} {plan.estudiantes?.apellidos}
-                  </TableCell>
                   <TableCell>{plan.ciclos_academicos?.nombre}</TableCell>
                   <TableCell>{plan.nivel}</TableCell>
                   <TableCell>S/ {Number(plan.total).toFixed(2)}</TableCell>
@@ -438,8 +403,8 @@ const PlanesPago = () => {
             <div className="space-y-4">
               <div className="bg-muted p-4 rounded-lg">
                 <h3 className="font-semibold">{selectedPlan.nombre}</h3>
-                <p className="text-sm">Estudiante: {selectedPlan.estudiantes?.nombres} {selectedPlan.estudiantes?.apellidos}</p>
                 <p className="text-sm">Nivel: {selectedPlan.nivel}</p>
+                <p className="text-sm">Ciclo: {selectedPlan.ciclos_academicos?.nombre}</p>
               </div>
               
               <div>

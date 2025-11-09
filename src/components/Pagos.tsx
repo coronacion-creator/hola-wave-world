@@ -16,26 +16,50 @@ const Pagos = () => {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     estudiante_id: "",
-    sede_id: "",
-    monto: "",
-    concepto: "",
+    cuota_id: "",
     metodo_pago: "efectivo" as const,
   });
+  const [selectedCuota, setSelectedCuota] = useState<any>(null);
 
-  const { data: pagos, isLoading } = useQuery({
-    queryKey: ["pagos"],
+  const { data: cuotas, isLoading } = useQuery({
+    queryKey: ["cuotas-pago"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("pagos")
+        .from("cuotas_pago")
         .select(`
           *,
-          estudiantes(nombres, apellidos, dni),
-          sedes(nombre)
+          planes_pago(
+            nombre,
+            nivel,
+            ciclos_academicos(nombre),
+            matriculas(estudiantes(nombres, apellidos, dni))
+          )
         `)
-        .order("created_at", { ascending: false });
+        .order("fecha_vencimiento", { ascending: true });
       if (error) throw error;
       return data;
     },
+  });
+
+  const { data: cuotasDisponibles } = useQuery({
+    queryKey: ["cuotas-disponibles", formData.estudiante_id],
+    queryFn: async () => {
+      if (!formData.estudiante_id) return [];
+      
+      const { data } = await supabase
+        .from("cuotas_pago")
+        .select(`
+          *,
+          planes_pago!inner(
+            nombre,
+            matriculas!inner(estudiante_id)
+          )
+        `)
+        .eq("planes_pago.matriculas.estudiante_id", formData.estudiante_id)
+        .in("estado", ["pendiente", "vencido"]);
+      return data || [];
+    },
+    enabled: !!formData.estudiante_id,
   });
 
   const { data: estudiantes } = useQuery({
@@ -49,65 +73,54 @@ const Pagos = () => {
     },
   });
 
-  const { data: sedes } = useQuery({
-    queryKey: ["sedes-pagos"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("sedes")
-        .select("*")
-        .eq("activo", true);
-      return data || [];
-    },
-  });
-
   const createMutation = useMutation({
     mutationFn: async (newPago: typeof formData) => {
-      const { data, error } = await supabase.rpc("procesar_pago", {
-        p_estudiante_id: newPago.estudiante_id,
-        p_sede_id: newPago.sede_id,
-        p_monto: parseFloat(newPago.monto),
-        p_concepto: newPago.concepto,
-        p_metodo_pago: newPago.metodo_pago,
-      });
+      const { error } = await supabase
+        .from("cuotas_pago")
+        .update({
+          estado: "pagado",
+          fecha_pago: new Date().toISOString(),
+        })
+        .eq("id", newPago.cuota_id);
+      
       if (error) throw error;
-      return data;
+      return { success: true, message: "Pago procesado exitosamente" };
     },
     onSuccess: (data: any) => {
-      if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ["pagos"] });
-        toast.success(data.message);
-        setOpen(false);
-        setFormData({
-          estudiante_id: "",
-          sede_id: "",
-          monto: "",
-          concepto: "",
-          metodo_pago: "efectivo",
-        });
-      } else {
-        toast.error(data.message);
-      }
+      queryClient.invalidateQueries({ queryKey: ["cuotas-pago"] });
+      queryClient.invalidateQueries({ queryKey: ["cuotas-disponibles"] });
+      queryClient.invalidateQueries({ queryKey: ["planes-pago"] });
+      toast.success(data.message);
+      setOpen(false);
+      setFormData({
+        estudiante_id: "",
+        cuota_id: "",
+        metodo_pago: "efectivo",
+      });
+      setSelectedCuota(null);
     },
     onError: (error: any) => {
       toast.error(`Error: ${error.message}`);
     },
   });
 
-  const revertirMutation = useMutation({
-    mutationFn: async (pagoId: string) => {
-      const { data, error } = await supabase.rpc("revertir_pago", {
-        p_pago_id: pagoId,
-      });
+  const cambiarEstadoMutation = useMutation({
+    mutationFn: async ({ cuotaId, nuevoEstado }: { cuotaId: string; nuevoEstado: string }) => {
+      const { error } = await supabase
+        .from("cuotas_pago")
+        .update({
+          estado: nuevoEstado,
+          fecha_pago: nuevoEstado === "pagado" ? new Date().toISOString() : null,
+        })
+        .eq("id", cuotaId);
+      
       if (error) throw error;
-      return data;
+      return { success: true };
     },
-    onSuccess: (data: any) => {
-      if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ["pagos"] });
-        toast.success(data.message);
-      } else {
-        toast.error(data.message);
-      }
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cuotas-pago"] });
+      queryClient.invalidateQueries({ queryKey: ["planes-pago"] });
+      toast.success("Estado actualizado correctamente");
     },
   });
 
@@ -145,7 +158,10 @@ const Pagos = () => {
                   <Label htmlFor="estudiante">Estudiante</Label>
                   <Select
                     value={formData.estudiante_id}
-                    onValueChange={(value) => setFormData({ ...formData, estudiante_id: value })}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, estudiante_id: value, cuota_id: "" });
+                      setSelectedCuota(null);
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccione estudiante" />
@@ -159,45 +175,53 @@ const Pagos = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sede">Sede</Label>
-                  <Select
-                    value={formData.sede_id}
-                    onValueChange={(value) => setFormData({ ...formData, sede_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione sede" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sedes?.map((sede) => (
-                        <SelectItem key={sede.id} value={sede.id}>
-                          {sede.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="monto">Monto (S/)</Label>
-                  <Input
-                    id="monto"
-                    type="number"
-                    step="0.01"
-                    value={formData.monto}
-                    onChange={(e) => setFormData({ ...formData, monto: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="concepto">Concepto</Label>
-                  <Input
-                    id="concepto"
-                    value={formData.concepto}
-                    onChange={(e) => setFormData({ ...formData, concepto: e.target.value })}
-                    placeholder="Ej: Mensualidad, Matrícula"
-                    required
-                  />
-                </div>
+
+                {formData.estudiante_id && (
+                  <div className="space-y-2">
+                    <Label htmlFor="cuota">Cuota a Pagar</Label>
+                    <Select
+                      value={formData.cuota_id}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, cuota_id: value });
+                        const cuota = cuotasDisponibles?.find(c => c.id === value);
+                        setSelectedCuota(cuota);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione cuota" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cuotasDisponibles?.map((cuota) => (
+                          <SelectItem key={cuota.id} value={cuota.id}>
+                            Cuota {cuota.numero_cuota} - {cuota.concepto} - S/ {Number(cuota.monto).toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {selectedCuota && (
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Concepto:</span>
+                      <span>{selectedCuota.concepto}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Monto:</span>
+                      <span className="font-bold text-lg">S/ {Number(selectedCuota.monto).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Vencimiento:</span>
+                      <span>{new Date(selectedCuota.fecha_vencimiento).toLocaleDateString("es-PE")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Plan:</span>
+                      <span>{selectedCuota.planes_pago?.nombre}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="metodo">Método de Pago</Label>
                   <Select
@@ -215,7 +239,12 @@ const Pagos = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={createMutation.isPending || !formData.cuota_id}
+                >
                   {createMutation.isPending ? "Procesando..." : "Procesar Pago"}
                 </Button>
               </form>
@@ -225,60 +254,69 @@ const Pagos = () => {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p>Cargando pagos...</p>
+          <p>Cargando cuotas...</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Plan</TableHead>
                 <TableHead>Estudiante</TableHead>
-                <TableHead>Sede</TableHead>
-                <TableHead>Monto</TableHead>
+                <TableHead>N° Cuota</TableHead>
                 <TableHead>Concepto</TableHead>
-                <TableHead>Método</TableHead>
-                <TableHead>Fecha</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Acción</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pagos?.map((pago) => (
-                <TableRow key={pago.id}>
-                  <TableCell>
-                    {pago.estudiantes?.nombres} {pago.estudiantes?.apellidos}
-                  </TableCell>
-                  <TableCell>{pago.sedes?.nombre}</TableCell>
-                  <TableCell className="font-semibold">S/ {Number(pago.monto).toFixed(2)}</TableCell>
-                  <TableCell>{pago.concepto}</TableCell>
-                  <TableCell className="capitalize">{pago.metodo_pago}</TableCell>
-                  <TableCell>
-                    {new Date(pago.fecha_pago).toLocaleDateString("es-PE")}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      pago.estado === "completado"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                        : pago.estado === "revertido"
-                        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                    }`}>
-                      {pago.estado}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {pago.estado === "completado" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => revertirMutation.mutate(pago.id)}
-                        disabled={revertirMutation.isPending}
+              {cuotas?.map((cuota) => {
+                const matricula = cuota.planes_pago?.matriculas?.[0];
+                const estudiante = matricula?.estudiantes;
+                
+                return (
+                  <TableRow key={cuota.id}>
+                    <TableCell>{cuota.planes_pago?.nombre}</TableCell>
+                    <TableCell>
+                      {estudiante ? `${estudiante.nombres} ${estudiante.apellidos}` : "Sin asignar"}
+                    </TableCell>
+                    <TableCell>{cuota.numero_cuota}</TableCell>
+                    <TableCell>{cuota.concepto}</TableCell>
+                    <TableCell className="font-semibold">S/ {Number(cuota.monto).toFixed(2)}</TableCell>
+                    <TableCell>
+                      {new Date(cuota.fecha_vencimiento).toLocaleDateString("es-PE")}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={cuota.estado}
+                        onValueChange={(value) => 
+                          cambiarEstadoMutation.mutate({ cuotaId: cuota.id, nuevoEstado: value })
+                        }
                       >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        Revertir
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendiente">Pendiente</SelectItem>
+                          <SelectItem value="pagado">Pagado</SelectItem>
+                          <SelectItem value="vencido">Vencido</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        cuota.estado === "pagado"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          : cuota.estado === "vencido"
+                          ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                      }`}>
+                        {cuota.estado}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}
