@@ -217,8 +217,8 @@ const Cursos = () => {
                       <SelectValue placeholder="Seleccione un nivel" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="INICIAL">INICIAL</SelectItem>
-                      <SelectItem value="PRIMARIA">PRIMARIA</SelectItem>
+                      <SelectItem value="inicial">INICIAL</SelectItem>
+                      <SelectItem value="primaria">PRIMARIA</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
