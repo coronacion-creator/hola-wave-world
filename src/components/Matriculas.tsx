@@ -9,13 +9,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { BookOpen, Eye } from "lucide-react";
+import { BookOpen, Eye, Edit, Trash2 } from "lucide-react";
 
 const Matriculas = () => {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [selectedMatricula, setSelectedMatricula] = useState<any>(null);
   const [formData, setFormData] = useState({
     estudiante_id: "",
     grado_seccion_id: "",
@@ -167,9 +169,101 @@ const Matriculas = () => {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("matriculas")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+      toast.success("Matrícula eliminada exitosamente");
+    },
+    onError: (error: any) => {
+      toast.error(`Error: ${error.message}`);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
+      const { data: cursoData } = await supabase
+        .from("cursos")
+        .select("id")
+        .limit(1)
+        .maybeSingle();
+      
+      let cursoId = cursoData?.id;
+      
+      if (!cursoId) {
+        const { data: nuevoCurso } = await supabase
+          .from("cursos")
+          .insert({
+            nombre: "Curso General",
+            codigo: "GEN-001",
+            descripcion: "Curso general por defecto",
+            sede_id: data.sede_id,
+          })
+          .select()
+          .single();
+        cursoId = nuevoCurso.id;
+      }
+
+      const { error } = await supabase
+        .from("matriculas")
+        .update({
+          estudiante_id: data.estudiante_id,
+          curso_id: cursoId,
+          grado_seccion_id: data.grado_seccion_id,
+          sede_id: data.sede_id,
+          periodo_academico: data.periodo_academico,
+          plan_pago_id: data.plan_pago_id || null,
+        })
+        .eq("id", id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["matriculas"] });
+      toast.success("Matrícula actualizada exitosamente");
+      setEditOpen(false);
+      setSelectedMatricula(null);
+      setFormData({
+        estudiante_id: "",
+        grado_seccion_id: "",
+        sede_id: "",
+        periodo_academico: "",
+        plan_pago_id: "",
+      });
+    },
+    onError: (error: any) => {
+      toast.error(`Error: ${error.message}`);
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate(formData);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedMatricula) {
+      updateMutation.mutate({ id: selectedMatricula.id, data: formData });
+    }
+  };
+
+  const handleEdit = (matricula: any) => {
+    setSelectedMatricula(matricula);
+    setFormData({
+      estudiante_id: matricula.estudiante_id,
+      grado_seccion_id: matricula.grado_seccion_id,
+      sede_id: matricula.sede_id,
+      periodo_academico: matricula.periodo_academico,
+      plan_pago_id: matricula.plan_pago_id || "",
+    });
+    setEditOpen(true);
   };
 
   const verPlanPago = async (planId: string) => {
@@ -373,23 +467,20 @@ const Matriculas = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => toast.info("Ver matrícula en desarrollo")}
+                        onClick={() => handleEdit(matricula)}
                       >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toast.info("Editar matrícula en desarrollo")}
-                      >
-                        Editar
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => toast.info("Eliminar matrícula en desarrollo")}
+                        onClick={() => {
+                          if (confirm("¿Está seguro de eliminar esta matrícula?")) {
+                            deleteMutation.mutate(matricula.id);
+                          }
+                        }}
                       >
-                        Eliminar
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -399,6 +490,113 @@ const Matriculas = () => {
           </Table>
         )}
       </CardContent>
+
+      {/* Dialog para editar matrícula */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Matrícula</DialogTitle>
+            <DialogDescription>
+              Modifique los datos de la matrícula
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="estudiante-edit">Estudiante</Label>
+              <Select
+                value={formData.estudiante_id}
+                onValueChange={(value) => setFormData({ ...formData, estudiante_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione estudiante" />
+                </SelectTrigger>
+                <SelectContent>
+                  {estudiantes?.map((est) => (
+                    <SelectItem key={est.id} value={est.id}>
+                      {est.nombres} {est.apellidos} - DNI: {est.dni}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="grado-edit">Grado y Sección</Label>
+              <Select
+                value={formData.grado_seccion_id}
+                onValueChange={(value) => setFormData({ ...formData, grado_seccion_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione grado y sección" />
+                </SelectTrigger>
+                <SelectContent>
+                  {gradosSecciones?.map((gs) => (
+                    <SelectItem key={gs.id} value={gs.id}>
+                      {gs.nivel} - {gs.grado} "{gs.seccion}"
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sede-edit">Sede</Label>
+              <Select
+                value={formData.sede_id}
+                onValueChange={(value) => setFormData({ ...formData, sede_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione sede" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sedes?.map((sede) => (
+                    <SelectItem key={sede.id} value={sede.id}>
+                      {sede.nombre} - {sede.ciudad}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="periodo-edit">Periodo Académico</Label>
+              <Select
+                value={formData.periodo_academico}
+                onValueChange={(value) => setFormData({ ...formData, periodo_academico: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione periodo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ciclos?.map((ciclo) => (
+                    <SelectItem key={ciclo.id} value={ciclo.nombre}>
+                      {ciclo.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-edit">Plan de Pago (Opcional)</Label>
+              <Select
+                value={formData.plan_pago_id}
+                onValueChange={(value) => setFormData({ ...formData, plan_pago_id: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {planesPago?.map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.nombre} - {plan.estudiantes?.nombres} {plan.estudiantes?.apellidos}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" className="w-full" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Actualizando..." : "Actualizar Matrícula"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog para ver plan de pago */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
