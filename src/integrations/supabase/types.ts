@@ -49,6 +49,36 @@ export type Database = {
           },
         ]
       }
+      ciclos_academicos: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id: string
+          nombre: string
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id?: string
+          nombre: string
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          fecha_fin?: string
+          fecha_inicio?: string
+          id?: string
+          nombre?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       competencias: {
         Row: {
           created_at: string | null
@@ -719,6 +749,7 @@ export type Database = {
         Row: {
           activo: boolean | null
           capacidad: number | null
+          ciclo_academico_id: string | null
           codigo: string
           created_at: string | null
           grado: string
@@ -733,6 +764,7 @@ export type Database = {
         Insert: {
           activo?: boolean | null
           capacidad?: number | null
+          ciclo_academico_id?: string | null
           codigo: string
           created_at?: string | null
           grado: string
@@ -747,6 +779,7 @@ export type Database = {
         Update: {
           activo?: boolean | null
           capacidad?: number | null
+          ciclo_academico_id?: string | null
           codigo?: string
           created_at?: string | null
           grado?: string
@@ -759,6 +792,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "salones_ciclo_academico_id_fkey"
+            columns: ["ciclo_academico_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_academicos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "salones_profesor_id_fkey"
             columns: ["profesor_id"]

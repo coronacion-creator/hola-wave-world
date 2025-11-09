@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Users, BookOpen, DollarSign, BarChart3, UserCheck, BookMarked, LogOut, UserPlus, DoorOpen } from "lucide-react";
+import { GraduationCap, Users, BookOpen, DollarSign, BarChart3, UserCheck, BookMarked, LogOut, UserPlus, DoorOpen, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/components/Dashboard";
@@ -12,7 +12,7 @@ import Evaluaciones from "@/components/Evaluaciones";
 import Profesores from "@/components/Profesores";
 import Cursos from "@/components/Cursos";
 import GestionUsuarios from "@/components/GestionUsuarios";
-import { Grados } from "@/components/Grados";
+import { CicloAcademico } from "@/components/CicloAcademico";
 import { Salones } from "@/components/Salones";
 
 const AdminDashboard = () => {
@@ -74,9 +74,9 @@ const AdminDashboard = () => {
               <GraduationCap className="h-4 w-4" />
               <span className="hidden sm:inline">Académico</span>
             </TabsTrigger>
-            <TabsTrigger value="grados" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Grados</span>
+            <TabsTrigger value="ciclos" className="flex items-center gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Ciclo Académico</span>
             </TabsTrigger>
             <TabsTrigger value="salones" className="flex items-center gap-2">
               <DoorOpen className="h-4 w-4" />
@@ -109,8 +109,8 @@ const AdminDashboard = () => {
             <TabsContent value="academico">
               <Evaluaciones />
             </TabsContent>
-            <TabsContent value="grados">
-              <Grados />
+            <TabsContent value="ciclos">
+              <CicloAcademico />
             </TabsContent>
             <TabsContent value="salones">
               <Salones />
