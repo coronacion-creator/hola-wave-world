@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { BookOpen, Plus, Users, UserCheck } from "lucide-react";
+import { BookOpen, Plus, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -20,13 +20,10 @@ const Cursos = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [selectedCurso, setSelectedCurso] = useState<string>("");
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
     descripcion: "",
-    creditos: 0,
     nivel: "",
   });
 
@@ -62,21 +59,9 @@ const Cursos = () => {
         return nuevoCodigo;
       };
       
-      setFormData(prev => ({ ...prev, codigo: generarCodigo() }));
+      setFormData(prev => ({ ...prev, codigo: generarCodigo(), nombre: "", descripcion: "", nivel: "" }));
     }
   }, [open, cursos]);
-
-  const { data: profesores } = useQuery({
-    queryKey: ["profesores"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profesores")
-        .select("*")
-        .eq("estado", "activo");
-      if (error) throw error;
-      return data;
-    },
-  });
 
   const { data: matriculas } = useQuery({
     queryKey: ["matriculas-por-curso"],
@@ -123,41 +108,17 @@ const Cursos = () => {
       queryClient.invalidateQueries({ queryKey: ["cursos"] });
       toast({ title: "Curso registrado exitosamente" });
       setOpen(false);
-      setFormData({ codigo: "", nombre: "", descripcion: "", creditos: 0, nivel: "" });
+      setFormData({ codigo: "", nombre: "", descripcion: "", nivel: "" });
     },
     onError: (error) => {
       toast({ title: "Error al registrar curso", description: error.message, variant: "destructive" });
     },
   });
 
-  const assignProfesor = useMutation({
-    mutationFn: async ({ cursoId, profesorId }: { cursoId: string; profesorId: string }) => {
-      const { data, error } = await supabase.rpc("asignar_profesor_a_curso", {
-        p_curso_id: cursoId,
-        p_profesor_id: profesorId,
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cursos"] });
-      toast({ title: "Profesor asignado exitosamente" });
-      setAssignOpen(false);
-    },
-    onError: (error) => {
-      toast({ title: "Error al asignar profesor", description: error.message, variant: "destructive" });
-    },
-  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createCurso.mutate(formData);
-  };
-
-  const handleAssign = (profesorId: string) => {
-    if (selectedCurso && profesorId) {
-      assignProfesor.mutate({ cursoId: selectedCurso, profesorId });
-    }
   };
 
   return (
@@ -212,15 +173,6 @@ const Cursos = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="creditos">Créditos</Label>
-                  <Input
-                    id="creditos"
-                    type="number"
-                    value={formData.creditos}
-                    onChange={(e) => setFormData({ ...formData, creditos: parseInt(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="nivel">Nivel</Label>
                   <Select value={formData.nivel} onValueChange={(value) => setFormData({ ...formData, nivel: value })}>
                     <SelectTrigger>
@@ -254,36 +206,19 @@ const Cursos = () => {
                   <Card>
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <div>
-                          <CollapsibleTrigger className="flex items-center gap-2 hover:text-primary transition-colors">
-                            <CardTitle className="text-lg">{curso.nombre}</CardTitle>
-                            <span className="text-sm text-muted-foreground">({curso.codigo})</span>
-                          </CollapsibleTrigger>
-                          <CardDescription className="mt-1">{curso.descripcion}</CardDescription>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedCurso(curso.id);
-                            setAssignOpen(true);
-                          }}
-                        >
-                          <UserCheck className="h-4 w-4 mr-2" />
-                          Asignar Profesor
-                        </Button>
+                      <div>
+                        <CollapsibleTrigger className="flex items-center gap-2 hover:text-primary transition-colors">
+                          <CardTitle className="text-lg">{curso.nombre}</CardTitle>
+                          <span className="text-sm text-muted-foreground">({curso.codigo})</span>
+                        </CollapsibleTrigger>
+                        <CardDescription className="mt-1">{curso.descripcion}</CardDescription>
                       </div>
-                      <div className="flex gap-4 mt-2 text-sm">
-                        <div className="flex items-center gap-1">
-                          <UserCheck className="h-4 w-4 text-primary" />
-                          <span>
-                            Profesor: {curso.profesores ? `${curso.profesores.nombres} ${curso.profesores.apellidos}` : "Sin asignar"}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4 text-primary" />
-                          <span>Estudiantes: {stats?.total_estudiantes || 0}</span>
-                        </div>
+                    </div>
+                    <div className="flex gap-4 mt-2 text-sm">
+                      <div className="flex items-center gap-1">
+                        <Users className="h-4 w-4 text-primary" />
+                        <span>Estudiantes: {stats?.total_estudiantes || 0}</span>
+                      </div>
                         {stats?.promedio_general !== undefined && (
                           <div className="flex items-center gap-1">
                             <span>Promedio General: </span>
@@ -329,29 +264,6 @@ const Cursos = () => {
             })}
           </div>
         )}
-
-        <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Asignar Profesor al Curso</DialogTitle>
-              <DialogDescription>Seleccione un profesor para asignar a este curso</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Select onValueChange={handleAssign}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccione un profesor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profesores?.map((profesor) => (
-                    <SelectItem key={profesor.id} value={profesor.id}>
-                      {profesor.nombres} {profesor.apellidos} - {profesor.especialidad || "Sin especialidad"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </DialogContent>
-        </Dialog>
       </CardContent>
     </Card>
   );

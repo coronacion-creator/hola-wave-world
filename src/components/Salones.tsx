@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Users, UserCheck, DoorOpen, Eye, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, UserCheck, DoorOpen, Eye, BookOpen, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -53,6 +53,7 @@ export function Salones() {
   const [selectedSalonCurso, setSelectedSalonCurso] = useState<any>(null);
   const [competencias, setCompetencias] = useState<any[]>([]);
   const [competenciaForm, setCompetenciaForm] = useState({ nombre: "", descripcion: "", porcentaje: "" });
+  const [editingCompetencia, setEditingCompetencia] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     codigo: "",
@@ -404,29 +405,69 @@ export function Salones() {
       }
 
       // Verificar que la suma de porcentajes no exceda 100
-      const sumaActual = competencias.reduce((sum, c) => sum + parseFloat(c.porcentaje), 0);
+      const sumaActual = competencias
+        .filter(c => c.id !== editingCompetencia?.id)
+        .reduce((sum, c) => sum + parseFloat(c.porcentaje), 0);
+      
       if (sumaActual + porcentaje > 100) {
         toast.error(`La suma de porcentajes no puede exceder 100%. Actual: ${sumaActual}%`);
         return;
       }
 
-      const { error } = await supabase
-        .from("competencias")
-        .insert({
-          salon_curso_id: selectedSalonCurso.id,
-          nombre: competenciaForm.nombre,
-          descripcion: competenciaForm.descripcion,
-          porcentaje: porcentaje,
-        });
+      if (editingCompetencia) {
+        // Actualizar competencia existente
+        const { error } = await supabase
+          .from("competencias")
+          .update({
+            nombre: competenciaForm.nombre,
+            descripcion: competenciaForm.descripcion,
+            porcentaje: porcentaje,
+          })
+          .eq("id", editingCompetencia.id);
 
-      if (error) throw error;
-      toast.success("Competencia agregada");
+        if (error) throw error;
+        toast.success("Competencia actualizada");
+        setEditingCompetencia(null);
+      } else {
+        // Agregar nueva competencia
+        const { error } = await supabase
+          .from("competencias")
+          .insert({
+            salon_curso_id: selectedSalonCurso.id,
+            nombre: competenciaForm.nombre,
+            descripcion: competenciaForm.descripcion,
+            porcentaje: porcentaje,
+          });
+
+        if (error) throw error;
+        toast.success("Competencia agregada");
+      }
+      
       setCompetenciaForm({ nombre: "", descripcion: "", porcentaje: "" });
       loadCompetencias(selectedSalonCurso.id);
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Error al agregar competencia");
+      toast.error(editingCompetencia ? "Error al actualizar competencia" : "Error al agregar competencia");
     }
+  };
+
+  const handleEditCompetencia = (competencia: any) => {
+    setEditingCompetencia(competencia);
+    setCompetenciaForm({
+      nombre: competencia.nombre,
+      descripcion: competencia.descripcion || "",
+      porcentaje: competencia.porcentaje.toString(),
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCompetencia(null);
+    setCompetenciaForm({ nombre: "", descripcion: "", porcentaje: "" });
+  };
+
+  const validateCompetenciasSuma = () => {
+    const sumaTotal = competencias.reduce((sum, c) => sum + parseFloat(c.porcentaje), 0);
+    return Math.abs(sumaTotal - 100) < 0.01; // Permitir pequeña diferencia por redondeo
   };
 
   const handleDeleteCompetencia = async (competenciaId: string) => {
@@ -887,18 +928,39 @@ export function Salones() {
                   onChange={(e) => setCompetenciaForm({ ...competenciaForm, descripcion: e.target.value })}
                 />
               </div>
-              <Button type="submit">
-                <Plus className="h-4 w-4 mr-2" />
-                Agregar Competencia
-              </Button>
+              <div className="flex gap-2">
+                <Button type="submit">
+                  {editingCompetencia ? (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Actualizar Competencia
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Competencia
+                    </>
+                  )}
+                </Button>
+                {editingCompetencia && (
+                  <Button type="button" variant="outline" onClick={handleCancelEdit}>
+                    Cancelar
+                  </Button>
+                )}
+              </div>
             </form>
 
             <div>
               <h3 className="font-semibold mb-4">
                 Competencias Configuradas
                 {competencias.length > 0 && (
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  <span className={`ml-2 text-sm font-normal ${
+                    validateCompetenciasSuma() 
+                      ? "text-green-600 dark:text-green-400" 
+                      : "text-red-600 dark:text-red-400"
+                  }`}>
                     (Total: {competencias.reduce((sum, c) => sum + parseFloat(c.porcentaje), 0).toFixed(2)}%)
+                    {!validateCompetenciasSuma() && " - ¡Debe sumar 100%!"}
                   </span>
                 )}
               </h3>
@@ -923,13 +985,22 @@ export function Salones() {
                           <Badge>{comp.porcentaje}%</Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteCompetencia(comp.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditCompetencia(comp)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteCompetencia(comp.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -942,8 +1013,24 @@ export function Salones() {
               )}
             </div>
 
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={() => setCompetenciasDialogOpen(false)}>
+            <div className="flex justify-end space-x-2">
+              {competencias.length > 0 && !validateCompetenciasSuma() && (
+                <p className="text-sm text-red-600 dark:text-red-400 flex items-center mr-auto">
+                  ⚠️ Las competencias deben sumar exactamente 100% antes de cerrar
+                </p>
+              )}
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  if (competencias.length > 0 && !validateCompetenciasSuma()) {
+                    toast.error("Las competencias deben sumar exactamente 100%");
+                    return;
+                  }
+                  setCompetenciasDialogOpen(false);
+                  setEditingCompetencia(null);
+                  setCompetenciaForm({ nombre: "", descripcion: "", porcentaje: "" });
+                }}
+              >
                 Cerrar
               </Button>
             </div>

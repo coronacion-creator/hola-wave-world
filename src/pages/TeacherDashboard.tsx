@@ -679,39 +679,71 @@ const TeacherDashboard = () => {
                                   </div>
                                 </TableHead>
                               ))}
+                              <TableHead>
+                                <div className="font-semibold text-primary">Promedio</div>
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {estudiantesEval.map((estudiante, index) => (
-                              <TableRow key={estudiante.id}>
-                                <TableCell>{index + 1}</TableCell>
-                                <TableCell>
-                                  {estudiante.apellidos}, {estudiante.nombres}
-                                </TableCell>
-                                {competenciasEval.map((comp) => (
-                                  <TableCell key={comp.id}>
-                                    <Input
-                                      type="number"
-                                      step="0.1"
-                                      min="0"
-                                      max="20"
-                                      className="w-20"
-                                      value={notas[estudiante.id]?.[comp.id] || ""}
-                                      onChange={(e) => 
-                                        setNotas(prev => ({
-                                          ...prev,
-                                          [estudiante.id]: {
-                                            ...prev[estudiante.id],
-                                            [comp.id]: e.target.value
-                                          }
-                                        }))
-                                      }
-                                      placeholder="0-20"
-                                    />
+                            {estudiantesEval.map((estudiante, index) => {
+                              // Calcular promedio ponderado
+                              const calcularPromedio = () => {
+                                const notasEstudiante = notas[estudiante.id] || {};
+                                let sumaNotas = 0;
+                                let sumaPorcentajes = 0;
+                                
+                                competenciasEval.forEach((comp) => {
+                                  const nota = parseFloat(notasEstudiante[comp.id] || "0");
+                                  const porcentaje = parseFloat(comp.porcentaje.toString());
+                                  if (!isNaN(nota) && !isNaN(porcentaje)) {
+                                    sumaNotas += (nota * porcentaje) / 100;
+                                    sumaPorcentajes += porcentaje;
+                                  }
+                                });
+                                
+                                return sumaPorcentajes > 0 ? sumaNotas : 0;
+                              };
+                              
+                              const promedio = calcularPromedio();
+                              
+                              return (
+                                <TableRow key={estudiante.id}>
+                                  <TableCell>{index + 1}</TableCell>
+                                  <TableCell>
+                                    {estudiante.apellidos}, {estudiante.nombres}
                                   </TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
+                                  {competenciasEval.map((comp) => (
+                                    <TableCell key={comp.id}>
+                                      <Input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="20"
+                                        className="w-20"
+                                        value={notas[estudiante.id]?.[comp.id] || ""}
+                                        onChange={(e) => 
+                                          setNotas(prev => ({
+                                            ...prev,
+                                            [estudiante.id]: {
+                                              ...prev[estudiante.id],
+                                              [comp.id]: e.target.value
+                                            }
+                                          }))
+                                        }
+                                        placeholder="0-20"
+                                      />
+                                    </TableCell>
+                                  ))}
+                                  <TableCell>
+                                    <span className={`text-lg font-bold ${
+                                      promedio >= 10.5 ? "text-green-600" : "text-red-600"
+                                    }`}>
+                                      {promedio.toFixed(2)}
+                                    </span>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </div>
