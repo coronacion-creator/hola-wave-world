@@ -350,13 +350,12 @@ export function Salones() {
                 </div>
 
                 <div>
-                  <Label htmlFor="profesor">Profesor Asignado</Label>
-                  <Select value={formData.profesor_id} onValueChange={(value) => setFormData({ ...formData, profesor_id: value })}>
+                  <Label htmlFor="profesor">Profesor Asignado (Opcional)</Label>
+                  <Select value={formData.profesor_id || undefined} onValueChange={(value) => setFormData({ ...formData, profesor_id: value || "" })}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar profesor" />
+                      <SelectValue placeholder="Sin asignar" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin asignar</SelectItem>
                       {profesores.map((prof) => (
                         <SelectItem key={prof.id} value={prof.id}>
                           {prof.nombres} {prof.apellidos}
