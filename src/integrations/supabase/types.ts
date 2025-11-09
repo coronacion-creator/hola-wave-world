@@ -220,6 +220,48 @@ export type Database = {
           },
         ]
       }
+      estudiantes_salones: {
+        Row: {
+          activo: boolean | null
+          estudiante_id: string
+          fecha_asignacion: string | null
+          id: string
+          periodo_academico: string
+          salon_id: string
+        }
+        Insert: {
+          activo?: boolean | null
+          estudiante_id: string
+          fecha_asignacion?: string | null
+          id?: string
+          periodo_academico: string
+          salon_id: string
+        }
+        Update: {
+          activo?: boolean | null
+          estudiante_id?: string
+          fecha_asignacion?: string | null
+          id?: string
+          periodo_academico?: string
+          salon_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estudiantes_salones_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estudiantes_salones_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evaluaciones: {
         Row: {
           created_at: string | null
@@ -589,6 +631,66 @@ export type Database = {
             columns: ["profesor_id"]
             isOneToOne: false
             referencedRelation: "profesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salones: {
+        Row: {
+          activo: boolean | null
+          capacidad: number | null
+          codigo: string
+          created_at: string | null
+          grado: string
+          id: string
+          nivel: string
+          nombre: string | null
+          profesor_id: string | null
+          seccion: string
+          sede_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          capacidad?: number | null
+          codigo: string
+          created_at?: string | null
+          grado: string
+          id?: string
+          nivel: string
+          nombre?: string | null
+          profesor_id?: string | null
+          seccion: string
+          sede_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          capacidad?: number | null
+          codigo?: string
+          created_at?: string | null
+          grado?: string
+          id?: string
+          nivel?: string
+          nombre?: string | null
+          profesor_id?: string | null
+          seccion?: string
+          sede_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salones_profesor_id_fkey"
+            columns: ["profesor_id"]
+            isOneToOne: false
+            referencedRelation: "profesores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salones_sede_id_fkey"
+            columns: ["sede_id"]
+            isOneToOne: false
+            referencedRelation: "sedes"
             referencedColumns: ["id"]
           },
         ]

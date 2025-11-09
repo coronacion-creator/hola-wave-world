@@ -35,6 +35,7 @@ export function Grados() {
   const [gradoDetails, setGradoDetails] = useState<Record<string, GradoDetails>>({});
   
   const [formData, setFormData] = useState({
+    nivel: "PRIMARIA",
     grado: "1°",
     seccion: "A",
     sede_id: "",
@@ -133,6 +134,7 @@ export function Grados() {
   const handleEdit = (grado: GradoSeccion) => {
     setEditingGrado(grado);
     setFormData({
+      nivel: (grado as any).nivel || "PRIMARIA",
       grado: grado.grado,
       seccion: grado.seccion,
       sede_id: grado.sede_id,
@@ -157,8 +159,15 @@ export function Grados() {
   };
 
   const resetForm = () => {
-    setFormData({ grado: "1°", seccion: "A", sede_id: "", activo: true });
+    setFormData({ nivel: "PRIMARIA", grado: "1°", seccion: "A", sede_id: "", activo: true });
     setEditingGrado(null);
+  };
+
+  const getGradoOptions = () => {
+    if (formData.nivel === "INICIAL") {
+      return ["3 años", "4 años", "5 años"];
+    }
+    return ["1°", "2°", "3°", "4°", "5°", "6°"];
   };
 
   if (loading) {
@@ -185,13 +194,29 @@ export function Grados() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
+                <Label htmlFor="nivel">Nivel</Label>
+                <Select value={formData.nivel} onValueChange={(value) => {
+                  const newGrado = value === "INICIAL" ? "3 años" : "1°";
+                  setFormData({ ...formData, nivel: value, grado: newGrado });
+                }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INICIAL">INICIAL</SelectItem>
+                    <SelectItem value="PRIMARIA">PRIMARIA</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label htmlFor="grado">Grado</Label>
                 <Select value={formData.grado} onValueChange={(value) => setFormData({ ...formData, grado: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {["1°", "2°", "3°", "4°", "5°", "6°"].map((g) => (
+                    {getGradoOptions().map((g) => (
                       <SelectItem key={g} value={g}>{g}</SelectItem>
                     ))}
                   </SelectContent>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked, LogOut, UserPlus } from "lucide-react";
+import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked, LogOut, UserPlus, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/components/Dashboard";
@@ -14,6 +14,7 @@ import Profesores from "@/components/Profesores";
 import Cursos from "@/components/Cursos";
 import GestionUsuarios from "@/components/GestionUsuarios";
 import { Grados } from "@/components/Grados";
+import { Salones } from "@/components/Salones";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -41,7 +42,7 @@ const AdminDashboard = () => {
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 md:grid-cols-10 gap-2 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-11 gap-2 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -82,6 +83,10 @@ const AdminDashboard = () => {
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Grados</span>
             </TabsTrigger>
+            <TabsTrigger value="salones" className="flex items-center gap-2">
+              <DoorOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Salones</span>
+            </TabsTrigger>
           </TabsList>
 
           <div className="mt-6">
@@ -114,6 +119,9 @@ const AdminDashboard = () => {
             </TabsContent>
             <TabsContent value="grados">
               <Grados />
+            </TabsContent>
+            <TabsContent value="salones">
+              <Salones />
             </TabsContent>
           </div>
         </Tabs>
