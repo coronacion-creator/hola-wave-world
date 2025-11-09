@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Eye } from "lucide-react";
 
 const Matriculas = () => {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [formData, setFormData] = useState({
     estudiante_id: "",
     curso_id: "",
     sede_id: "",
-    periodo_academico: "2025-1",
+    periodo_academico: "",
+    plan_pago_id: "",
   });
 
   const { data: matriculas, isLoading } = useQuery({
@@ -30,9 +33,10 @@ const Matriculas = () => {
           *,
           estudiantes(nombres, apellidos, dni),
           cursos(nombre, codigo),
-          sedes(nombre, ciudad)
+          sedes(nombre, ciudad),
+          planes_pago(nombre, total, pagado, restante)
         `)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false});
       if (error) throw error;
       return data;
     },
@@ -71,6 +75,28 @@ const Matriculas = () => {
     },
   });
 
+  const { data: ciclos } = useQuery({
+    queryKey: ["ciclos-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ciclos_academicos")
+        .select("*")
+        .eq("activo", true);
+      return data || [];
+    },
+  });
+
+  const { data: planesPago } = useQuery({
+    queryKey: ["planes-disponibles"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("planes_pago")
+        .select("*, estudiantes(nombres, apellidos)")
+        .eq("activo", true);
+      return data || [];
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async (newMatricula: typeof formData) => {
       const { data, error } = await supabase.rpc("matricular_con_validacion", {
@@ -80,7 +106,18 @@ const Matriculas = () => {
         p_periodo_academico: newMatricula.periodo_academico,
       });
       if (error) throw error;
-      return data;
+      
+      const result = data as any;
+      // Si hay plan de pago seleccionado, actualizar la matrícula
+      if (newMatricula.plan_pago_id && result.success) {
+        const { error: updateError } = await supabase
+          .from("matriculas")
+          .update({ plan_pago_id: newMatricula.plan_pago_id })
+          .eq("id", result.matricula_id);
+        if (updateError) throw updateError;
+      }
+      
+      return result;
     },
     onSuccess: (data: any) => {
       if (data.success) {
@@ -91,7 +128,8 @@ const Matriculas = () => {
           estudiante_id: "",
           curso_id: "",
           sede_id: "",
-          periodo_academico: "2025-1",
+          periodo_academico: "",
+          plan_pago_id: "",
         });
       } else {
         toast.error(data.message);
@@ -107,6 +145,23 @@ const Matriculas = () => {
     createMutation.mutate(formData);
   };
 
+  const verPlanPago = async (planId: string) => {
+    const { data } = await supabase
+      .from("planes_pago")
+      .select(`
+        *,
+        cuotas_pago(*),
+        estudiantes(nombres, apellidos)
+      `)
+      .eq("id", planId)
+      .single();
+    
+    if (data) {
+      setSelectedPlan(data);
+      setViewOpen(true);
+    }
+  };
+
   return (
     <Card className="shadow-md">
       <CardHeader>
@@ -114,7 +169,7 @@ const Matriculas = () => {
           <div>
             <CardTitle>Gestión de Matrículas</CardTitle>
             <CardDescription>
-              Registro de matrículas con validación de duplicados
+              Registro de matrículas con selección de periodo y plan de pago
             </CardDescription>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -128,7 +183,7 @@ const Matriculas = () => {
               <DialogHeader>
                 <DialogTitle>Registrar Nueva Matrícula</DialogTitle>
                 <DialogDescription>
-                  El sistema valida duplicados automáticamente
+                  Complete los datos de matrícula
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -188,13 +243,39 @@ const Matriculas = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="periodo">Periodo Académico</Label>
-                  <Input
-                    id="periodo"
+                  <Select
                     value={formData.periodo_academico}
-                    onChange={(e) => setFormData({ ...formData, periodo_academico: e.target.value })}
-                    placeholder="2025-1"
-                    required
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, periodo_academico: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione periodo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ciclos?.map((ciclo) => (
+                        <SelectItem key={ciclo.id} value={ciclo.nombre}>
+                          {ciclo.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plan">Plan de Pago (Opcional)</Label>
+                  <Select
+                    value={formData.plan_pago_id}
+                    onValueChange={(value) => setFormData({ ...formData, plan_pago_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {planesPago?.map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id}>
+                          {plan.nombre} - {plan.estudiantes?.nombres} {plan.estudiantes?.apellidos}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button type="submit" className="w-full" disabled={createMutation.isPending}>
                   {createMutation.isPending ? "Procesando..." : "Matricular"}
@@ -215,6 +296,7 @@ const Matriculas = () => {
                 <TableHead>Curso</TableHead>
                 <TableHead>Sede</TableHead>
                 <TableHead>Periodo</TableHead>
+                <TableHead>Plan de Pago</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
@@ -233,6 +315,20 @@ const Matriculas = () => {
                   </TableCell>
                   <TableCell>{matricula.periodo_academico}</TableCell>
                   <TableCell>
+                    {matricula.plan_pago_id ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => verPlanPago(matricula.plan_pago_id!)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver Plan
+                      </Button>
+                    ) : (
+                      "Sin plan"
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {new Date(matricula.fecha_matricula).toLocaleDateString("es-PE")}
                   </TableCell>
                   <TableCell>
@@ -250,6 +346,76 @@ const Matriculas = () => {
           </Table>
         )}
       </CardContent>
+
+      {/* Dialog para ver plan de pago */}
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Plan de Pago</DialogTitle>
+          </DialogHeader>
+          {selectedPlan && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg">
+                <h3 className="font-semibold">{selectedPlan.nombre}</h3>
+                <p className="text-sm">Estudiante: {selectedPlan.estudiantes?.nombres} {selectedPlan.estudiantes?.apellidos}</p>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-2">Cuotas</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>N°</TableHead>
+                      <TableHead>Concepto</TableHead>
+                      <TableHead>Monto</TableHead>
+                      <TableHead>Vencimiento</TableHead>
+                      <TableHead>Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedPlan.cuotas_pago?.map((cuota: any) => (
+                      <TableRow key={cuota.id}>
+                        <TableCell>{cuota.numero_cuota}</TableCell>
+                        <TableCell>{cuota.concepto}</TableCell>
+                        <TableCell>S/ {Number(cuota.monto).toFixed(2)}</TableCell>
+                        <TableCell>
+                          {cuota.fecha_vencimiento ? new Date(cuota.fecha_vencimiento).toLocaleDateString("es-PE") : "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            cuota.estado === "pagado"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                              : cuota.estado === "vencido"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          }`}>
+                            {cuota.estado}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-semibold">Total:</span>
+                  <span className="font-bold">S/ {Number(selectedPlan.total).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span>Pagado:</span>
+                  <span>S/ {Number(selectedPlan.pagado).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-red-600 dark:text-red-400">
+                  <span>Restante:</span>
+                  <span>S/ {Number(selectedPlan.restante).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

@@ -117,6 +117,53 @@ export type Database = {
           },
         ]
       }
+      cuotas_pago: {
+        Row: {
+          concepto: string
+          created_at: string | null
+          estado: string | null
+          fecha_pago: string | null
+          fecha_vencimiento: string
+          id: string
+          monto: number
+          numero_cuota: number
+          plan_pago_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          concepto: string
+          created_at?: string | null
+          estado?: string | null
+          fecha_pago?: string | null
+          fecha_vencimiento: string
+          id?: string
+          monto: number
+          numero_cuota: number
+          plan_pago_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          concepto?: string
+          created_at?: string | null
+          estado?: string | null
+          fecha_pago?: string | null
+          fecha_vencimiento?: string
+          id?: string
+          monto?: number
+          numero_cuota?: number
+          plan_pago_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cuotas_pago_plan_pago_id_fkey"
+            columns: ["plan_pago_id"]
+            isOneToOne: false
+            referencedRelation: "planes_pago"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cursos: {
         Row: {
           activo: boolean | null
@@ -238,43 +285,76 @@ export type Database = {
       estudiantes: {
         Row: {
           apellidos: string
+          apoderado_apellidos: string | null
+          apoderado_direccion: string | null
+          apoderado_dni: string | null
+          apoderado_edad: number | null
+          apoderado_email: string | null
+          apoderado_fecha_nacimiento: string | null
+          apoderado_nombres: string | null
+          apoderado_sexo: string | null
+          apoderado_telefono: string | null
           created_at: string | null
           direccion: string | null
           dni: string
+          edad: number | null
           email: string | null
           estado: string | null
           fecha_nacimiento: string | null
           id: string
           nombres: string
           sede_id: string
+          sexo: string | null
           telefono: string | null
           updated_at: string | null
         }
         Insert: {
           apellidos: string
+          apoderado_apellidos?: string | null
+          apoderado_direccion?: string | null
+          apoderado_dni?: string | null
+          apoderado_edad?: number | null
+          apoderado_email?: string | null
+          apoderado_fecha_nacimiento?: string | null
+          apoderado_nombres?: string | null
+          apoderado_sexo?: string | null
+          apoderado_telefono?: string | null
           created_at?: string | null
           direccion?: string | null
           dni: string
+          edad?: number | null
           email?: string | null
           estado?: string | null
           fecha_nacimiento?: string | null
           id?: string
           nombres: string
           sede_id: string
+          sexo?: string | null
           telefono?: string | null
           updated_at?: string | null
         }
         Update: {
           apellidos?: string
+          apoderado_apellidos?: string | null
+          apoderado_direccion?: string | null
+          apoderado_dni?: string | null
+          apoderado_edad?: number | null
+          apoderado_email?: string | null
+          apoderado_fecha_nacimiento?: string | null
+          apoderado_nombres?: string | null
+          apoderado_sexo?: string | null
+          apoderado_telefono?: string | null
           created_at?: string | null
           direccion?: string | null
           dni?: string
+          edad?: number | null
           email?: string | null
           estado?: string | null
           fecha_nacimiento?: string | null
           id?: string
           nombres?: string
           sede_id?: string
+          sexo?: string | null
           telefono?: string | null
           updated_at?: string | null
         }
@@ -510,6 +590,7 @@ export type Database = {
           grado_seccion_id: string | null
           id: string
           periodo_academico: string
+          plan_pago_id: string | null
           sede_id: string
         }
         Insert: {
@@ -521,6 +602,7 @@ export type Database = {
           grado_seccion_id?: string | null
           id?: string
           periodo_academico: string
+          plan_pago_id?: string | null
           sede_id: string
         }
         Update: {
@@ -532,6 +614,7 @@ export type Database = {
           grado_seccion_id?: string | null
           id?: string
           periodo_academico?: string
+          plan_pago_id?: string | null
           sede_id?: string
         }
         Relationships: [
@@ -554,6 +637,13 @@ export type Database = {
             columns: ["grado_seccion_id"]
             isOneToOne: false
             referencedRelation: "grados_secciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_plan_pago_id_fkey"
+            columns: ["plan_pago_id"]
+            isOneToOne: false
+            referencedRelation: "planes_pago"
             referencedColumns: ["id"]
           },
           {
@@ -616,19 +706,79 @@ export type Database = {
           },
         ]
       }
+      planes_pago: {
+        Row: {
+          activo: boolean | null
+          ciclo_academico_id: string | null
+          created_at: string | null
+          estudiante_id: string | null
+          id: string
+          nivel: string
+          nombre: string
+          pagado: number | null
+          restante: number | null
+          total: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          ciclo_academico_id?: string | null
+          created_at?: string | null
+          estudiante_id?: string | null
+          id?: string
+          nivel: string
+          nombre: string
+          pagado?: number | null
+          restante?: number | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          ciclo_academico_id?: string | null
+          created_at?: string | null
+          estudiante_id?: string | null
+          id?: string
+          nivel?: string
+          nombre?: string
+          pagado?: number | null
+          restante?: number | null
+          total?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planes_pago_ciclo_academico_id_fkey"
+            columns: ["ciclo_academico_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_academicos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planes_pago_estudiante_id_fkey"
+            columns: ["estudiante_id"]
+            isOneToOne: false
+            referencedRelation: "estudiantes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profesores: {
         Row: {
           apellidos: string
           created_at: string
           direccion: string | null
           dni: string
+          edad: number | null
           email: string | null
           especialidad: string | null
           estado: string | null
           fecha_contratacion: string | null
+          fecha_nacimiento: string | null
           id: string
           nombres: string
           sede_id: string
+          sexo: string | null
           telefono: string | null
           updated_at: string
         }
@@ -637,13 +787,16 @@ export type Database = {
           created_at?: string
           direccion?: string | null
           dni: string
+          edad?: number | null
           email?: string | null
           especialidad?: string | null
           estado?: string | null
           fecha_contratacion?: string | null
+          fecha_nacimiento?: string | null
           id?: string
           nombres: string
           sede_id: string
+          sexo?: string | null
           telefono?: string | null
           updated_at?: string
         }
@@ -652,13 +805,16 @@ export type Database = {
           created_at?: string
           direccion?: string | null
           dni?: string
+          edad?: number | null
           email?: string | null
           especialidad?: string | null
           estado?: string | null
           fecha_contratacion?: string | null
+          fecha_nacimiento?: string | null
           id?: string
           nombres?: string
           sede_id?: string
+          sexo?: string | null
           telefono?: string | null
           updated_at?: string
         }

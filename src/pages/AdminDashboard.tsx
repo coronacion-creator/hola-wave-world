@@ -8,6 +8,7 @@ import Dashboard from "@/components/Dashboard";
 import Estudiantes from "@/components/Estudiantes";
 import Matriculas from "@/components/Matriculas";
 import Pagos from "@/components/Pagos";
+import PlanesPago from "@/components/PlanesPago";
 import Evaluaciones from "@/components/Evaluaciones";
 import Profesores from "@/components/Profesores";
 import Cursos from "@/components/Cursos";
@@ -104,7 +105,10 @@ const AdminDashboard = () => {
               <Matriculas />
             </TabsContent>
             <TabsContent value="pagos">
-              <Pagos />
+              <div className="space-y-4">
+                <PlanesPago />
+                <Pagos />
+              </div>
             </TabsContent>
             <TabsContent value="academico">
               <Evaluaciones />
