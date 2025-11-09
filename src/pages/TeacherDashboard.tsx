@@ -14,6 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 interface Salon {
   id: string;
@@ -81,6 +82,12 @@ const TeacherDashboard = () => {
   const [estudiantesEval, setEstudiantesEval] = useState<Estudiante[]>([]);
   const [notas, setNotas] = useState<Record<string, Record<string, string>>>({});
 
+  // Estados para estadísticas
+  const [selectedSalonStats, setSelectedSalonStats] = useState("");
+  const [statsViewType, setStatsViewType] = useState<"general" | "curso">("general");
+  const [selectedCursoStats, setSelectedCursoStats] = useState("");
+  const [estadisticasData, setEstadisticasData] = useState<any>(null);
+
   useEffect(() => {
     if (user) {
       loadSalonesProfesor();
@@ -105,6 +112,16 @@ const TeacherDashboard = () => {
       loadEstudiantesSalon(selectedSalonEval);
     }
   }, [selectedCursoEval]);
+
+  useEffect(() => {
+    if (selectedSalonStats) {
+      loadEstadisticas();
+      // También cargar los cursos del salón para el selector
+      if (statsViewType === "curso") {
+        loadCursosSalon(selectedSalonStats);
+      }
+    }
+  }, [selectedSalonStats, statsViewType, selectedCursoStats]);
 
   const loadSalonesProfesor = async () => {
     try {
@@ -326,6 +343,104 @@ const TeacherDashboard = () => {
         description: "Error al cargar competencias",
         variant: "destructive",
       });
+    }
+  };
+
+  const loadEstadisticas = async () => {
+    if (!selectedSalonStats) return;
+
+    try {
+      if (statsViewType === "general") {
+        // Estadísticas generales del salón (todos los cursos)
+        const { data: salonCursosData } = await supabase
+          .from("salon_cursos")
+          .select("curso_id, cursos(nombre)")
+          .eq("salon_id", selectedSalonStats)
+          .eq("activo", true);
+
+        if (!salonCursosData) return;
+
+        const cursosIds = salonCursosData.map((sc: any) => sc.curso_id);
+
+        // Obtener promedios de notas por curso
+        const { data: matriculas } = await supabase
+          .from("matriculas")
+          .select(`
+            id,
+            curso_id,
+            cursos(nombre),
+            estado_academico(promedio)
+          `)
+          .in("curso_id", cursosIds)
+          .eq("estado", "activa");
+
+        // Calcular distribución de promedios
+        const aprobados = matriculas?.filter(m => Number(m.estado_academico?.[0]?.promedio || 0) >= 10.5).length || 0;
+        const reprobados = matriculas?.filter(m => Number(m.estado_academico?.[0]?.promedio || 0) < 10.5).length || 0;
+
+        // Obtener asistencias
+        const { data: asistencias } = await supabase
+          .from("asistencias")
+          .select(`
+            presente,
+            matriculas!inner(id, curso_id)
+          `)
+          .in("matriculas.curso_id", cursosIds);
+
+        const presente = asistencias?.filter(a => a.presente === true).length || 0;
+        const ausente = asistencias?.filter(a => a.presente === false).length || 0;
+
+        setEstadisticasData({
+          notasData: [
+            { name: "Aprobados", value: aprobados, color: "#10b981" },
+            { name: "Reprobados", value: reprobados, color: "#ef4444" },
+          ],
+          asistenciasData: [
+            { name: "Presente", value: presente, color: "#10b981" },
+            { name: "Ausente", value: ausente, color: "#ef4444" },
+          ],
+        });
+      } else {
+        // Estadísticas por curso específico
+        if (!selectedCursoStats) return;
+
+        const { data: matriculas } = await supabase
+          .from("matriculas")
+          .select(`
+            id,
+            estudiantes(id),
+            estado_academico(promedio)
+          `)
+          .eq("curso_id", selectedCursoStats)
+          .eq("estado", "activa");
+
+        const aprobados = matriculas?.filter(m => Number(m.estado_academico?.[0]?.promedio || 0) >= 10.5).length || 0;
+        const reprobados = matriculas?.filter(m => Number(m.estado_academico?.[0]?.promedio || 0) < 10.5).length || 0;
+
+        const { data: asistencias } = await supabase
+          .from("asistencias")
+          .select(`
+            presente,
+            matriculas!inner(id, curso_id)
+          `)
+          .eq("matriculas.curso_id", selectedCursoStats);
+
+        const presente = asistencias?.filter(a => a.presente === true).length || 0;
+        const ausente = asistencias?.filter(a => a.presente === false).length || 0;
+
+        setEstadisticasData({
+          notasData: [
+            { name: "Aprobados", value: aprobados, color: "#10b981" },
+            { name: "Reprobados", value: reprobados, color: "#ef4444" },
+          ],
+          asistenciasData: [
+            { name: "Presente", value: presente, color: "#10b981" },
+            { name: "Ausente", value: ausente, color: "#ef4444" },
+          ],
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar estadísticas:", error);
     }
   };
 
@@ -774,8 +889,158 @@ const TeacherDashboard = () => {
                     Visualiza el rendimiento general de tus clases
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">Contenido en desarrollo...</p>
+                <CardContent className="space-y-6">
+                  {/* Selector de Salón */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Seleccionar Salón</Label>
+                      <Select value={selectedSalonStats} onValueChange={(value) => {
+                        setSelectedSalonStats(value);
+                        setStatsViewType("general");
+                        setSelectedCursoStats("");
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione un salón" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {salones.map((salon) => (
+                            <SelectItem key={salon.id} value={salon.id}>
+                              {salon.codigo} - {salon.grado} {salon.seccion}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedSalonStats && (
+                      <div>
+                        <Label>Tipo de Vista</Label>
+                        <Select value={statsViewType} onValueChange={(value: "general" | "curso") => {
+                          setStatsViewType(value);
+                          if (value === "general") {
+                            setSelectedCursoStats("");
+                          }
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">General del Salón</SelectItem>
+                            <SelectItem value="curso">Por Curso</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Selector de Curso (solo si es por curso) */}
+                  {statsViewType === "curso" && selectedSalonStats && (
+                    <div>
+                      <Label>Seleccionar Curso</Label>
+                      <Select value={selectedCursoStats} onValueChange={setSelectedCursoStats}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione un curso" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {salonCursos
+                            .filter(sc => {
+                              const salon = salones.find(s => s.id === selectedSalonStats);
+                              return salon;
+                            })
+                            .map((sc) => (
+                              <SelectItem key={sc.id} value={sc.cursos.id}>
+                                {sc.cursos.nombre} ({sc.cursos.codigo})
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Gráficos */}
+                  {estadisticasData && (statsViewType === "general" || selectedCursoStats) && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Gráfico de Notas */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Rendimiento por Notas</CardTitle>
+                          <CardDescription>
+                            Distribución de aprobados y reprobados
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                              <Pie
+                                data={estadisticasData.notasData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, value, percent }) => 
+                                  `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
+                                }
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {estadisticasData.notasData.map((entry: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                              <Legend />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+
+                      {/* Gráfico de Asistencias */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Asistencias</CardTitle>
+                          <CardDescription>
+                            Distribución de asistencias registradas
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                              <Pie
+                                data={estadisticasData.asistenciasData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, value, percent }) => 
+                                  `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
+                                }
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {estadisticasData.asistenciasData.map((entry: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip />
+                              <Legend />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  {!selectedSalonStats && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      Selecciona un salón para ver las estadísticas
+                    </div>
+                  )}
+
+                  {statsViewType === "curso" && !selectedCursoStats && selectedSalonStats && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Selecciona un curso para ver sus estadísticas
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

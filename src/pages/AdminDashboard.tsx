@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, Users, BookOpen, Package, DollarSign, BarChart3, UserCheck, BookMarked, LogOut, UserPlus, DoorOpen } from "lucide-react";
+import { GraduationCap, Users, BookOpen, DollarSign, BarChart3, UserCheck, BookMarked, LogOut, UserPlus, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import Dashboard from "@/components/Dashboard";
 import Estudiantes from "@/components/Estudiantes";
 import Matriculas from "@/components/Matriculas";
 import Pagos from "@/components/Pagos";
-import Inventario from "@/components/Inventario";
 import Evaluaciones from "@/components/Evaluaciones";
 import Profesores from "@/components/Profesores";
 import Cursos from "@/components/Cursos";
@@ -42,7 +41,7 @@ const AdminDashboard = () => {
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 md:grid-cols-11 gap-2 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-4 md:grid-cols-10 gap-2 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -71,13 +70,9 @@ const AdminDashboard = () => {
               <DollarSign className="h-4 w-4" />
               <span className="hidden sm:inline">Pagos</span>
             </TabsTrigger>
-            <TabsTrigger value="inventario" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Inventario</span>
-            </TabsTrigger>
-            <TabsTrigger value="evaluaciones" className="flex items-center gap-2">
+            <TabsTrigger value="academico" className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4" />
-              <span className="hidden sm:inline">Evaluaciones</span>
+              <span className="hidden sm:inline">Académico</span>
             </TabsTrigger>
             <TabsTrigger value="grados" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -111,10 +106,7 @@ const AdminDashboard = () => {
             <TabsContent value="pagos">
               <Pagos />
             </TabsContent>
-            <TabsContent value="inventario">
-              <Inventario />
-            </TabsContent>
-            <TabsContent value="evaluaciones">
+            <TabsContent value="academico">
               <Evaluaciones />
             </TabsContent>
             <TabsContent value="grados">

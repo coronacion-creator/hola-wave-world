@@ -3,72 +3,162 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Eye } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+
+interface CursoEstudiante {
+  estudiante_id: string;
+  nombres: string;
+  apellidos: string;
+  promedio: number;
+  notas: Array<{
+    competencia: string;
+    nota: number;
+    porcentaje: number;
+  }>;
+}
 
 const Evaluaciones = () => {
-  const [selectedCurso, setSelectedCurso] = useState<string>("all");
+  const [selectedSalon, setSelectedSalon] = useState<string>("all");
+  const [viewCursoModal, setViewCursoModal] = useState(false);
+  const [selectedCursoData, setSelectedCursoData] = useState<{
+    curso_nombre: string;
+    estudiantes: CursoEstudiante[];
+    competencias: Array<{ nombre: string; porcentaje: number }>;
+  } | null>(null);
 
-  const { data: cursos } = useQuery({
-    queryKey: ["cursos-select"],
+  const { data: salones } = useQuery({
+    queryKey: ["salones-select"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cursos").select("id, nombre, codigo").eq("activo", true);
+      const { data, error } = await supabase
+        .from("salones")
+        .select("id, codigo, nombre, grado, seccion, nivel")
+        .eq("activo", true);
       if (error) throw error;
       return data;
     },
   });
 
-  const { data: evaluaciones, isLoading } = useQuery({
-    queryKey: ["evaluaciones", selectedCurso],
+  const { data: cursosPorSalon, isLoading } = useQuery({
+    queryKey: ["cursos-por-salon", selectedSalon],
     queryFn: async () => {
-      let query = supabase
-        .from("evaluaciones")
+      if (selectedSalon === "all") return [];
+
+      // Obtener los cursos del salón
+      const { data: salonCursos, error: errorSalonCursos } = await supabase
+        .from("salon_cursos")
         .select(`
-          *,
-          matriculas(
-            id,
-            curso_id,
-            estudiantes(nombres, apellidos),
-            cursos(id, nombre)
-          )
+          id,
+          curso_id,
+          cursos(id, nombre, codigo)
         `)
-        .order("created_at", { ascending: false });
+        .eq("salon_id", selectedSalon)
+        .eq("activo", true);
 
-      if (selectedCurso !== "all") {
-        query = query.eq("matriculas.curso_id", selectedCurso);
-      }
+      if (errorSalonCursos) throw errorSalonCursos;
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      // Para cada curso, obtener estudiantes y promedios
+      const cursosConDatos = await Promise.all(
+        (salonCursos || []).map(async (sc: any) => {
+          const cursoId = sc.cursos.id;
+
+          // Obtener estudiantes matriculados en este curso
+          const { data: matriculas, error: errorMatriculas } = await supabase
+            .from("matriculas")
+            .select(`
+              id,
+              estudiante_id,
+              estudiantes(nombres, apellidos),
+              estado_academico(promedio)
+            `)
+            .eq("curso_id", cursoId)
+            .eq("estado", "activa");
+
+          if (errorMatriculas) throw errorMatriculas;
+
+          // Calcular promedio general de todos los estudiantes
+          const promedios = matriculas?.map((m: any) => 
+            Number(m.estado_academico?.[0]?.promedio || 0)
+          ) || [];
+          
+          const promedioGeneral = promedios.length > 0
+            ? promedios.reduce((a, b) => a + b, 0) / promedios.length
+            : 0;
+
+          return {
+            salon_curso_id: sc.id,
+            curso_id: cursoId,
+            curso_nombre: sc.cursos.nombre,
+            curso_codigo: sc.cursos.codigo,
+            total_estudiantes: matriculas?.length || 0,
+            promedio_general: promedioGeneral,
+            matriculas: matriculas || [],
+          };
+        })
+      );
+
+      return cursosConDatos;
     },
+    enabled: selectedSalon !== "all",
   });
 
-  const { data: promediosPorEstudiante } = useQuery({
-    queryKey: ["promedios-estudiantes", selectedCurso],
-    queryFn: async () => {
-      let query = supabase
-        .from("estado_academico")
-        .select(`
-          promedio,
-          estado,
-          matriculas(
-            id,
-            curso_id,
-            estudiantes(nombres, apellidos),
-            cursos(nombre)
-          )
-        `);
+  const handleVerEstudiantes = async (curso: any) => {
+    try {
+      // Obtener competencias del curso
+      const { data: competencias, error: errorComp } = await supabase
+        .from("competencias")
+        .select("id, nombre, porcentaje")
+        .eq("salon_curso_id", curso.salon_curso_id);
 
-      if (selectedCurso !== "all") {
-        query = query.eq("matriculas.curso_id", selectedCurso);
-      }
+      if (errorComp) throw errorComp;
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-  });
+      // Procesar cada estudiante con sus notas por competencia
+      const estudiantesConNotas = await Promise.all(
+        curso.matriculas.map(async (matricula: any) => {
+          const notasPorCompetencia = await Promise.all(
+            (competencias || []).map(async (comp: any) => {
+              // Buscar evaluaciones del estudiante en esta competencia
+              const { data: evaluaciones } = await supabase
+                .from("evaluaciones")
+                .select("nota")
+                .eq("matricula_id", matricula.id)
+                .eq("tipo_evaluacion", comp.nombre);
+
+              const nota = evaluaciones && evaluaciones.length > 0
+                ? Number(evaluaciones[0].nota)
+                : 0;
+
+              return {
+                competencia: comp.nombre,
+                nota: nota,
+                porcentaje: Number(comp.porcentaje),
+              };
+            })
+          );
+
+          return {
+            estudiante_id: matricula.estudiante_id,
+            nombres: matricula.estudiantes.nombres,
+            apellidos: matricula.estudiantes.apellidos,
+            promedio: Number(matricula.estado_academico?.[0]?.promedio || 0),
+            notas: notasPorCompetencia,
+          };
+        })
+      );
+
+      setSelectedCursoData({
+        curso_nombre: curso.curso_nombre,
+        estudiantes: estudiantesConNotas,
+        competencias: competencias || [],
+      });
+      setViewCursoModal(true);
+    } catch (error) {
+      console.error("Error al cargar datos del curso:", error);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -78,20 +168,20 @@ const Evaluaciones = () => {
             <div className="flex items-center gap-2">
               <GraduationCap className="h-5 w-5 text-primary" />
               <div>
-                <CardTitle>Evaluaciones por Curso</CardTitle>
-                <CardDescription>Registro de notas y promedios por curso</CardDescription>
+                <CardTitle>Académico - Rendimiento por Salón</CardTitle>
+                <CardDescription>Selecciona un salón para ver el rendimiento de sus cursos</CardDescription>
               </div>
             </div>
             <div className="w-64">
-              <Select value={selectedCurso} onValueChange={setSelectedCurso}>
+              <Select value={selectedSalon} onValueChange={setSelectedSalon}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccione un curso" />
+                  <SelectValue placeholder="Seleccione un salón" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los cursos</SelectItem>
-                  {cursos?.map((curso) => (
-                    <SelectItem key={curso.id} value={curso.id}>
-                      {curso.nombre} ({curso.codigo})
+                  <SelectItem value="all">Seleccionar salón</SelectItem>
+                  {salones?.map((salon) => (
+                    <SelectItem key={salon.id} value={salon.id}>
+                      {salon.codigo} - {salon.grado} {salon.seccion} ({salon.nivel})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -100,100 +190,126 @@ const Evaluaciones = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <p>Cargando evaluaciones...</p>
-          ) : (
+          {selectedSalon === "all" ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Seleccione un salón para ver el rendimiento académico de sus cursos
+            </div>
+          ) : isLoading ? (
+            <p>Cargando cursos...</p>
+          ) : cursosPorSalon && cursosPorSalon.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Estudiante</TableHead>
+                  <TableHead>Código</TableHead>
                   <TableHead>Curso</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Nota</TableHead>
-                  <TableHead>Peso</TableHead>
-                  <TableHead>Fecha</TableHead>
+                  <TableHead>Estudiantes</TableHead>
+                  <TableHead>Promedio General</TableHead>
+                  <TableHead className="text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {evaluaciones?.map((evaluacion) => (
-                  <TableRow key={evaluacion.id}>
+                {cursosPorSalon.map((curso: any) => (
+                  <TableRow key={curso.curso_id}>
+                    <TableCell className="font-medium">{curso.curso_codigo}</TableCell>
+                    <TableCell>{curso.curso_nombre}</TableCell>
+                    <TableCell>{curso.total_estudiantes}</TableCell>
                     <TableCell>
-                      {evaluacion.matriculas?.estudiantes?.nombres} {evaluacion.matriculas?.estudiantes?.apellidos}
-                    </TableCell>
-                    <TableCell>{evaluacion.matriculas?.cursos?.nombre}</TableCell>
-                    <TableCell className="capitalize">{evaluacion.tipo_evaluacion}</TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        Number(evaluacion.nota) >= 10.5
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                      <span className={`text-lg font-bold ${
+                        curso.promedio_general >= 10.5 ? "text-green-600" : "text-red-600"
                       }`}>
-                        {Number(evaluacion.nota).toFixed(2)}
+                        {curso.promedio_general.toFixed(2)}
                       </span>
                     </TableCell>
-                    <TableCell>{Number(evaluacion.peso).toFixed(2)}</TableCell>
-                    <TableCell>
-                      {evaluacion.fecha_evaluacion ? new Date(evaluacion.fecha_evaluacion).toLocaleDateString("es-PE") : "N/A"}
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleVerEstudiantes(curso)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Estudiantes
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay cursos asignados a este salón
+            </div>
           )}
         </CardContent>
       </Card>
 
-      <Card className="shadow-md">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Promedios Generales por Estudiante</CardTitle>
-              <CardDescription>Promedio general de cada estudiante en el curso seleccionado</CardDescription>
+      {/* Modal para ver estudiantes del curso */}
+      <Dialog open={viewCursoModal} onOpenChange={setViewCursoModal}>
+        <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedCursoData?.curso_nombre} - Estudiantes y Notas
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedCursoData && (
+            <div className="space-y-4">
+              {selectedCursoData.competencias.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-semibold mb-2">Competencias:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCursoData.competencias.map((comp, idx) => (
+                      <Badge key={idx} variant="secondary">
+                        {comp.nombre} - {comp.porcentaje}%
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Estudiante</TableHead>
+                    {selectedCursoData.competencias.map((comp, idx) => (
+                      <TableHead key={idx}>
+                        {comp.nombre}
+                        <br />
+                        <span className="text-xs text-muted-foreground">({comp.porcentaje}%)</span>
+                      </TableHead>
+                    ))}
+                    <TableHead>Promedio</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedCursoData.estudiantes.map((estudiante) => (
+                    <TableRow key={estudiante.estudiante_id}>
+                      <TableCell>
+                        {estudiante.apellidos}, {estudiante.nombres}
+                      </TableCell>
+                      {estudiante.notas.map((nota, idx) => (
+                        <TableCell key={idx}>
+                          <span className={`font-semibold ${
+                            nota.nota >= 10.5 ? "text-green-600" : "text-red-600"
+                          }`}>
+                            {nota.nota.toFixed(2)}
+                          </span>
+                        </TableCell>
+                      ))}
+                      <TableCell>
+                        <span className={`text-lg font-bold ${
+                          estudiante.promedio >= 10.5 ? "text-green-600" : "text-red-600"
+                        }`}>
+                          {estudiante.promedio.toFixed(2)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Estudiante</TableHead>
-                <TableHead>Curso</TableHead>
-                <TableHead>Promedio</TableHead>
-                <TableHead>Estado</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {promediosPorEstudiante?.map((estado) => (
-                <TableRow key={estado.matriculas?.id}>
-                  <TableCell>
-                    {estado.matriculas?.estudiantes?.nombres} {estado.matriculas?.estudiantes?.apellidos}
-                  </TableCell>
-                  <TableCell>{estado.matriculas?.cursos?.nombre}</TableCell>
-                  <TableCell>
-                    <span className={`text-lg font-bold ${
-                      Number(estado.promedio) >= 10.5 ? "text-green-600" : "text-red-600"
-                    }`}>
-                      {Number(estado.promedio).toFixed(2)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${
-                      estado.estado === "aprobado"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                        : estado.estado === "reprobado"
-                        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                        : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                    }`}>
-                      {estado.estado}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
