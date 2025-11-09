@@ -312,6 +312,7 @@ export type Database = {
           created_at: string | null
           grado: string
           id: string
+          nivel: string
           seccion: string
           sede_id: string
         }
@@ -320,6 +321,7 @@ export type Database = {
           created_at?: string | null
           grado: string
           id?: string
+          nivel?: string
           seccion: string
           sede_id: string
         }
@@ -328,6 +330,7 @@ export type Database = {
           created_at?: string | null
           grado?: string
           id?: string
+          nivel?: string
           seccion?: string
           sede_id?: string
         }
