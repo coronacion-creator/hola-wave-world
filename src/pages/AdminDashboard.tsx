@@ -9,6 +9,7 @@ import Estudiantes from "@/components/Estudiantes";
 import Matriculas from "@/components/Matriculas";
 import Pagos from "@/components/Pagos";
 import PlanesPago from "@/components/PlanesPago";
+import RegistrarPago from "@/components/RegistrarPago";
 import Evaluaciones from "@/components/Evaluaciones";
 import Profesores from "@/components/Profesores";
 import Cursos from "@/components/Cursos";
@@ -107,6 +108,7 @@ const AdminDashboard = () => {
             <TabsContent value="pagos">
               <div className="space-y-4">
                 <PlanesPago />
+                <RegistrarPago />
                 <Pagos />
               </div>
             </TabsContent>

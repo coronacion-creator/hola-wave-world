@@ -99,11 +99,37 @@ const Matriculas = () => {
 
   const createMutation = useMutation({
     mutationFn: async (newMatricula: typeof formData) => {
+      // Crear un curso dummy para cumplir con el constraint NOT NULL
+      const { data: cursoData, error: cursoError } = await supabase
+        .from("cursos")
+        .select("id")
+        .limit(1)
+        .maybeSingle();
+      
+      let cursoId = cursoData?.id;
+      
+      // Si no hay cursos, crear uno dummy
+      if (!cursoId) {
+        const { data: nuevoCurso, error: errorNuevoCurso } = await supabase
+          .from("cursos")
+          .insert({
+            nombre: "Curso General",
+            codigo: "GEN-001",
+            descripcion: "Curso general por defecto",
+            sede_id: newMatricula.sede_id,
+          })
+          .select()
+          .single();
+        
+        if (errorNuevoCurso) throw errorNuevoCurso;
+        cursoId = nuevoCurso.id;
+      }
+
       const { data: matriculaData, error: matriculaError } = await supabase
         .from("matriculas")
         .insert({
           estudiante_id: newMatricula.estudiante_id,
-          curso_id: null as any,
+          curso_id: cursoId,
           grado_seccion_id: newMatricula.grado_seccion_id,
           sede_id: newMatricula.sede_id,
           periodo_academico: newMatricula.periodo_academico,
@@ -300,6 +326,7 @@ const Matriculas = () => {
                 <TableHead>Plan de Pago</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -340,6 +367,31 @@ const Matriculas = () => {
                     }`}>
                       {matricula.estado}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toast.info("Ver matrícula en desarrollo")}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toast.info("Editar matrícula en desarrollo")}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => toast.info("Eliminar matrícula en desarrollo")}
+                      >
+                        Eliminar
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

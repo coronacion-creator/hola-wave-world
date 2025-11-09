@@ -2,107 +2,58 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { DollarSign, RotateCcw } from "lucide-react";
+import { Eye } from "lucide-react";
 
 const Pagos = () => {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    estudiante_id: "",
-    cuota_id: "",
-    metodo_pago: "efectivo" as const,
-  });
-  const [selectedCuota, setSelectedCuota] = useState<any>(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [selectedEstudiante, setSelectedEstudiante] = useState<any>(null);
 
-  const { data: cuotas, isLoading } = useQuery({
-    queryKey: ["cuotas-pago"],
+  const { data: planes, isLoading } = useQuery({
+    queryKey: ["planes-con-estudiantes"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cuotas_pago")
+        .from("planes_pago")
         .select(`
           *,
-          planes_pago(
-            nombre,
-            nivel,
-            ciclos_academicos(nombre),
-            matriculas(estudiantes(nombres, apellidos, dni))
-          )
+          ciclos_academicos(nombre)
         `)
-        .order("fecha_vencimiento", { ascending: true });
+        .eq("activo", true)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
 
-  const { data: cuotasDisponibles } = useQuery({
-    queryKey: ["cuotas-disponibles", formData.estudiante_id],
-    queryFn: async () => {
-      if (!formData.estudiante_id) return [];
-      
-      const { data } = await supabase
-        .from("cuotas_pago")
-        .select(`
-          *,
-          planes_pago!inner(
-            nombre,
-            matriculas!inner(estudiante_id)
-          )
-        `)
-        .eq("planes_pago.matriculas.estudiante_id", formData.estudiante_id)
-        .in("estado", ["pendiente", "vencido"]);
-      return data || [];
-    },
-    enabled: !!formData.estudiante_id,
-  });
+  const verEstudiantesPlan = async (plan: any) => {
+    const { data } = await supabase
+      .from("matriculas")
+      .select(`
+        *,
+        estudiantes(id, nombres, apellidos, dni)
+      `)
+      .eq("plan_pago_id", plan.id);
+    
+    setSelectedPlan({ ...plan, estudiantes: data || [] });
+    setViewOpen(true);
+    setSelectedEstudiante(null);
+  };
 
-  const { data: estudiantes } = useQuery({
-    queryKey: ["estudiantes-pagos"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("estudiantes")
-        .select("*")
-        .eq("estado", "activo");
-      return data || [];
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (newPago: typeof formData) => {
-      const { error } = await supabase
-        .from("cuotas_pago")
-        .update({
-          estado: "pagado",
-          fecha_pago: new Date().toISOString(),
-        })
-        .eq("id", newPago.cuota_id);
-      
-      if (error) throw error;
-      return { success: true, message: "Pago procesado exitosamente" };
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["cuotas-pago"] });
-      queryClient.invalidateQueries({ queryKey: ["cuotas-disponibles"] });
-      queryClient.invalidateQueries({ queryKey: ["planes-pago"] });
-      toast.success(data.message);
-      setOpen(false);
-      setFormData({
-        estudiante_id: "",
-        cuota_id: "",
-        metodo_pago: "efectivo",
-      });
-      setSelectedCuota(null);
-    },
-    onError: (error: any) => {
-      toast.error(`Error: ${error.message}`);
-    },
-  });
+  const verPagosEstudiante = async (estudiante: any) => {
+    const { data } = await supabase
+      .from("cuotas_pago")
+      .select("*")
+      .eq("plan_pago_id", selectedPlan.id)
+      .order("numero_cuota");
+    
+    setSelectedEstudiante({ ...estudiante, cuotas: data || [] });
+  };
 
   const cambiarEstadoMutation = useMutation({
     mutationFn: async ({ cuotaId, nuevoEstado }: { cuotaId: string; nuevoEstado: string }) => {
@@ -118,209 +69,173 @@ const Pagos = () => {
       return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cuotas-pago"] });
-      queryClient.invalidateQueries({ queryKey: ["planes-pago"] });
+      queryClient.invalidateQueries({ queryKey: ["planes-con-estudiantes"] });
       toast.success("Estado actualizado correctamente");
+      if (selectedEstudiante) {
+        verPagosEstudiante(selectedEstudiante.estudiantes);
+      }
     },
   });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMutation.mutate(formData);
-  };
 
   return (
     <Card className="shadow-md">
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>Gestión de Pagos</CardTitle>
-            <CardDescription>
-              Registro y control de pagos con actualización automática de deudas
-            </CardDescription>
-          </div>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <DollarSign className="h-4 w-4" />
-                Registrar Pago
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Registrar Nuevo Pago</DialogTitle>
-                <DialogDescription>
-                  El pago se procesa y actualiza la deuda automáticamente
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="estudiante">Estudiante</Label>
-                  <Select
-                    value={formData.estudiante_id}
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, estudiante_id: value, cuota_id: "" });
-                      setSelectedCuota(null);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione estudiante" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {estudiantes?.map((est) => (
-                        <SelectItem key={est.id} value={est.id}>
-                          {est.nombres} {est.apellidos} - DNI: {est.dni}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.estudiante_id && (
-                  <div className="space-y-2">
-                    <Label htmlFor="cuota">Cuota a Pagar</Label>
-                    <Select
-                      value={formData.cuota_id}
-                      onValueChange={(value) => {
-                        setFormData({ ...formData, cuota_id: value });
-                        const cuota = cuotasDisponibles?.find(c => c.id === value);
-                        setSelectedCuota(cuota);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione cuota" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cuotasDisponibles?.map((cuota) => (
-                          <SelectItem key={cuota.id} value={cuota.id}>
-                            Cuota {cuota.numero_cuota} - {cuota.concepto} - S/ {Number(cuota.monto).toFixed(2)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {selectedCuota && (
-                  <div className="bg-muted p-4 rounded-lg space-y-2">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Concepto:</span>
-                      <span>{selectedCuota.concepto}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Monto:</span>
-                      <span className="font-bold text-lg">S/ {Number(selectedCuota.monto).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Vencimiento:</span>
-                      <span>{new Date(selectedCuota.fecha_vencimiento).toLocaleDateString("es-PE")}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium">Plan:</span>
-                      <span>{selectedCuota.planes_pago?.nombre}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="metodo">Método de Pago</Label>
-                  <Select
-                    value={formData.metodo_pago}
-                    onValueChange={(value: any) => setFormData({ ...formData, metodo_pago: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                      <SelectItem value="transferencia">Transferencia</SelectItem>
-                      <SelectItem value="otro">Otro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={createMutation.isPending || !formData.cuota_id}
-                >
-                  {createMutation.isPending ? "Procesando..." : "Procesar Pago"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <CardTitle>Gestión de Pagos</CardTitle>
+        <CardDescription>
+          Visualice planes de pago y gestione el estado de las cuotas por estudiante
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p>Cargando cuotas...</p>
+          <p>Cargando planes...</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Plan</TableHead>
-                <TableHead>Estudiante</TableHead>
-                <TableHead>N° Cuota</TableHead>
-                <TableHead>Concepto</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Vencimiento</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Acción</TableHead>
+                <TableHead>Ciclo</TableHead>
+                <TableHead>Nivel</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Estudiantes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cuotas?.map((cuota) => {
-                const matricula = cuota.planes_pago?.matriculas?.[0];
-                const estudiante = matricula?.estudiantes;
-                
-                return (
-                  <TableRow key={cuota.id}>
-                    <TableCell>{cuota.planes_pago?.nombre}</TableCell>
-                    <TableCell>
-                      {estudiante ? `${estudiante.nombres} ${estudiante.apellidos}` : "Sin asignar"}
-                    </TableCell>
-                    <TableCell>{cuota.numero_cuota}</TableCell>
-                    <TableCell>{cuota.concepto}</TableCell>
-                    <TableCell className="font-semibold">S/ {Number(cuota.monto).toFixed(2)}</TableCell>
-                    <TableCell>
-                      {new Date(cuota.fecha_vencimiento).toLocaleDateString("es-PE")}
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={cuota.estado}
-                        onValueChange={(value) => 
-                          cambiarEstadoMutation.mutate({ cuotaId: cuota.id, nuevoEstado: value })
-                        }
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pendiente">Pendiente</SelectItem>
-                          <SelectItem value="pagado">Pagado</SelectItem>
-                          <SelectItem value="vencido">Vencido</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        cuota.estado === "pagado"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                          : cuota.estado === "vencido"
-                          ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                      }`}>
-                        {cuota.estado}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {planes?.map((plan) => (
+                <TableRow key={plan.id}>
+                  <TableCell className="font-medium">{plan.nombre}</TableCell>
+                  <TableCell>{plan.ciclos_academicos?.nombre}</TableCell>
+                  <TableCell>{plan.nivel}</TableCell>
+                  <TableCell>S/ {Number(plan.total).toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => verEstudiantesPlan(plan)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Ver Estudiantes
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         )}
       </CardContent>
+
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedPlan?.nombre} - {selectedPlan?.ciclos_academicos?.nombre}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedEstudiante 
+                ? `Cuotas de ${selectedEstudiante.estudiantes?.nombres} ${selectedEstudiante.estudiantes?.apellidos}`
+                : "Estudiantes inscritos en este plan"
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPlan && (
+            <div className="space-y-4">
+              {!selectedEstudiante ? (
+                <>
+                  <div className="bg-muted p-4 rounded-lg">
+                    <p className="text-sm"><strong>Nivel:</strong> {selectedPlan.nivel}</p>
+                    <p className="text-sm"><strong>Total Plan:</strong> S/ {Number(selectedPlan.total).toFixed(2)}</p>
+                  </div>
+                  
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Estudiante</TableHead>
+                        <TableHead>DNI</TableHead>
+                        <TableHead>Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedPlan.estudiantes?.map((matricula: any) => (
+                        <TableRow key={matricula.id}>
+                          <TableCell>
+                            {matricula.estudiantes?.nombres} {matricula.estudiantes?.apellidos}
+                          </TableCell>
+                          <TableCell>{matricula.estudiantes?.dni}</TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => verPagosEstudiante(matricula)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver Pagos
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedEstudiante(null)}
+                  >
+                    ← Volver a estudiantes
+                  </Button>
+                  
+                  <div className="bg-muted p-4 rounded-lg">
+                    <p className="text-sm"><strong>Estudiante:</strong> {selectedEstudiante.estudiantes?.nombres} {selectedEstudiante.estudiantes?.apellidos}</p>
+                    <p className="text-sm"><strong>DNI:</strong> {selectedEstudiante.estudiantes?.dni}</p>
+                  </div>
+                  
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>N° Cuota</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Vencimiento</TableHead>
+                        <TableHead>Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedEstudiante.cuotas?.map((cuota: any) => (
+                        <TableRow key={cuota.id}>
+                          <TableCell>{cuota.numero_cuota}</TableCell>
+                          <TableCell>{cuota.concepto}</TableCell>
+                          <TableCell>S/ {Number(cuota.monto).toFixed(2)}</TableCell>
+                          <TableCell>
+                            {new Date(cuota.fecha_vencimiento).toLocaleDateString("es-PE")}
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={cuota.estado}
+                              onValueChange={(value) => 
+                                cambiarEstadoMutation.mutate({ cuotaId: cuota.id, nuevoEstado: value })
+                              }
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pendiente">Pendiente</SelectItem>
+                                <SelectItem value="pagado">Pagado</SelectItem>
+                                <SelectItem value="vencido">Vencido</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

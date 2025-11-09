@@ -347,8 +347,6 @@ const PlanesPago = () => {
                 <TableHead>Ciclo</TableHead>
                 <TableHead>Nivel</TableHead>
                 <TableHead>Total</TableHead>
-                <TableHead>Pagado</TableHead>
-                <TableHead>Restante</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -359,12 +357,6 @@ const PlanesPago = () => {
                   <TableCell>{plan.ciclos_academicos?.nombre}</TableCell>
                   <TableCell>{plan.nivel}</TableCell>
                   <TableCell>S/ {Number(plan.total).toFixed(2)}</TableCell>
-                  <TableCell className="text-green-600 dark:text-green-400">
-                    S/ {Number(plan.pagado).toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-red-600 dark:text-red-400">
-                    S/ {Number(plan.restante).toFixed(2)}
-                  </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -373,6 +365,15 @@ const PlanesPago = () => {
                         onClick={() => verDetallePlan(plan)}
                       >
                         <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          toast.info("Funcionalidad de editar en desarrollo");
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
