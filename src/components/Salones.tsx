@@ -8,9 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Users, UserCheck, DoorOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, UserCheck, DoorOpen, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface Salon {
   id: string;
@@ -38,6 +43,9 @@ export function Salones() {
   const [estudiantesDialogOpen, setEstudiantesDialogOpen] = useState(false);
   const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
   const [estudiantesSalon, setEstudiantesSalon] = useState<string[]>([]);
+  const [verEstudiantesDialogOpen, setVerEstudiantesDialogOpen] = useState(false);
+  const [estudiantesDelSalon, setEstudiantesDelSalon] = useState<any[]>([]);
+  const [estudiantesPorSalon, setEstudiantesPorSalon] = useState<Record<string, number>>({});
   
   const [formData, setFormData] = useState({
     codigo: "",
@@ -54,6 +62,12 @@ export function Salones() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (salones.length > 0) {
+      loadEstudiantesCounts();
+    }
+  }, [salones]);
 
   useEffect(() => {
     if (dialogOpen && !editingSalon && salones) {
@@ -102,6 +116,19 @@ export function Salones() {
     }
   };
 
+  const loadEstudiantesCounts = async () => {
+    const counts: Record<string, number> = {};
+    for (const salon of salones) {
+      const { count } = await supabase
+        .from("estudiantes_salones")
+        .select("*", { count: "exact", head: true })
+        .eq("salon_id", salon.id)
+        .eq("activo", true);
+      counts[salon.id] = count || 0;
+    }
+    setEstudiantesPorSalon(counts);
+  };
+
   const loadEstudiantesSalon = async (salonId: string) => {
     try {
       const { data, error } = await supabase
@@ -115,6 +142,26 @@ export function Salones() {
     } catch (error) {
       console.error("Error:", error);
       toast.error("Error al cargar estudiantes del salón");
+    }
+  };
+
+  const handleVerEstudiantes = async (salon: Salon) => {
+    try {
+      const { data, error } = await supabase
+        .from("estudiantes_salones")
+        .select("estudiante_id, estudiantes(dni, nombres, apellidos, email)")
+        .eq("salon_id", salon.id)
+        .eq("activo", true);
+
+      if (error) throw error;
+      
+      const estudiantesConInfo = data?.map(item => item.estudiantes).filter(Boolean) || [];
+      setEstudiantesDelSalon(estudiantesConInfo);
+      setSelectedSalon(salon);
+      setVerEstudiantesDialogOpen(true);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error al cargar estudiantes");
     }
   };
 
@@ -242,6 +289,7 @@ export function Salones() {
 
       toast.success("Estudiantes asignados exitosamente");
       setEstudiantesDialogOpen(false);
+      loadEstudiantesCounts();
     } catch (error) {
       console.error("Error:", error);
       toast.error("Error al asignar estudiantes");
@@ -414,7 +462,7 @@ export function Salones() {
                 <TableHead>Grado</TableHead>
                 <TableHead>Sección</TableHead>
                 <TableHead>Profesor</TableHead>
-                <TableHead>Capacidad</TableHead>
+                <TableHead>Estudiantes</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
@@ -428,12 +476,16 @@ export function Salones() {
                   <TableCell>{salon.grado}</TableCell>
                   <TableCell>{salon.seccion}</TableCell>
                   <TableCell>
+                    <Badge variant="outline">
+                      {estudiantesPorSalon[salon.id] || 0} / {salon.capacidad}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                     {salon.profesores 
                       ? `${salon.profesores.nombres} ${salon.profesores.apellidos}`
                       : "Sin asignar"
                     }
                   </TableCell>
-                  <TableCell>{salon.capacidad}</TableCell>
                   <TableCell>
                     <Badge variant={salon.activo ? "default" : "secondary"}>
                       {salon.activo ? "Activo" : "Inactivo"}
@@ -441,7 +493,20 @@ export function Salones() {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="icon" onClick={() => handleOpenEstudiantes(salon)}>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => handleVerEstudiantes(salon)}
+                        title="Ver estudiantes"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => handleOpenEstudiantes(salon)}
+                        title="Asignar estudiantes"
+                      >
                         <Users className="h-4 w-4" />
                       </Button>
                       <Button variant="outline" size="icon" onClick={() => handleEdit(salon)}>
@@ -497,6 +562,49 @@ export function Salones() {
               </Button>
               <Button onClick={handleSaveEstudiantes}>
                 Guardar Asignaciones
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={verEstudiantesDialogOpen} onOpenChange={setVerEstudiantesDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Estudiantes del Salón {selectedSalon?.codigo}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {estudiantesDelSalon.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>DNI</TableHead>
+                    <TableHead>Nombres</TableHead>
+                    <TableHead>Apellidos</TableHead>
+                    <TableHead>Email</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {estudiantesDelSalon.map((estudiante: any, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{estudiante.dni}</TableCell>
+                      <TableCell>{estudiante.nombres}</TableCell>
+                      <TableCell>{estudiante.apellidos}</TableCell>
+                      <TableCell>{estudiante.email || "-"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay estudiantes asignados a este salón
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setVerEstudiantesDialogOpen(false)}>
+                Cerrar
               </Button>
             </div>
           </div>
