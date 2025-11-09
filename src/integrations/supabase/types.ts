@@ -49,6 +49,44 @@ export type Database = {
           },
         ]
       }
+      competencias: {
+        Row: {
+          created_at: string | null
+          descripcion: string | null
+          id: string
+          nombre: string
+          porcentaje: number
+          salon_curso_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          descripcion?: string | null
+          id?: string
+          nombre: string
+          porcentaje: number
+          salon_curso_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          descripcion?: string | null
+          id?: string
+          nombre?: string
+          porcentaje?: number
+          salon_curso_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competencias_salon_curso_id_fkey"
+            columns: ["salon_curso_id"]
+            isOneToOne: false
+            referencedRelation: "salon_cursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cursos: {
         Row: {
           activo: boolean | null
@@ -634,6 +672,45 @@ export type Database = {
             columns: ["profesor_id"]
             isOneToOne: false
             referencedRelation: "profesores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salon_cursos: {
+        Row: {
+          activo: boolean | null
+          created_at: string | null
+          curso_id: string
+          id: string
+          salon_id: string
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string | null
+          curso_id: string
+          id?: string
+          salon_id: string
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string | null
+          curso_id?: string
+          id?: string
+          salon_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salon_cursos_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salon_cursos_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salones"
             referencedColumns: ["id"]
           },
         ]

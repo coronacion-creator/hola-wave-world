@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Users, UserCheck, DoorOpen, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, UserCheck, DoorOpen, Eye, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,6 +37,7 @@ export function Salones() {
   const [sedes, setSedes] = useState<any[]>([]);
   const [profesores, setProfesores] = useState<any[]>([]);
   const [estudiantes, setEstudiantes] = useState<any[]>([]);
+  const [cursos, setCursos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSalon, setEditingSalon] = useState<Salon | null>(null);
@@ -46,6 +47,12 @@ export function Salones() {
   const [verEstudiantesDialogOpen, setVerEstudiantesDialogOpen] = useState(false);
   const [estudiantesDelSalon, setEstudiantesDelSalon] = useState<any[]>([]);
   const [estudiantesPorSalon, setEstudiantesPorSalon] = useState<Record<string, number>>({});
+  const [cursosDialogOpen, setCursosDialogOpen] = useState(false);
+  const [cursosSalon, setCursosSalon] = useState<any[]>([]);
+  const [competenciasDialogOpen, setCompetenciasDialogOpen] = useState(false);
+  const [selectedSalonCurso, setSelectedSalonCurso] = useState<any>(null);
+  const [competencias, setCompetencias] = useState<any[]>([]);
+  const [competenciaForm, setCompetenciaForm] = useState({ nombre: "", descripcion: "", porcentaje: "" });
   
   const [formData, setFormData] = useState({
     codigo: "",
@@ -92,11 +99,12 @@ export function Salones() {
     try {
       setLoading(true);
       
-      const [{ data: sedesData }, { data: salonesData }, { data: profesoresData }, { data: estudiantesData }] = await Promise.all([
+      const [{ data: sedesData }, { data: salonesData }, { data: profesoresData }, { data: estudiantesData }, { data: cursosData }] = await Promise.all([
         supabase.from("sedes").select("*").eq("nombre", "Huancayo"),
         supabase.from("salones").select("*, sedes(nombre), profesores(nombres, apellidos)").order("codigo"),
         supabase.from("profesores").select("*").eq("estado", "activo"),
         supabase.from("estudiantes").select("*").eq("estado", "activo"),
+        supabase.from("cursos").select("*").eq("activo", true),
       ]);
 
       if (sedesData) {
@@ -108,6 +116,7 @@ export function Salones() {
       if (salonesData) setSalones(salonesData);
       if (profesoresData) setProfesores(profesoresData);
       if (estudiantesData) setEstudiantes(estudiantesData);
+      if (cursosData) setCursos(cursosData);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Error al cargar datos");
@@ -293,6 +302,150 @@ export function Salones() {
     } catch (error) {
       console.error("Error:", error);
       toast.error("Error al asignar estudiantes");
+    }
+  };
+
+  const handleOpenCursos = async (salon: Salon) => {
+    setSelectedSalon(salon);
+    await loadCursosSalon(salon.id);
+    setCursosDialogOpen(true);
+  };
+
+  const loadCursosSalon = async (salonId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("salon_cursos")
+        .select("*, cursos(id, codigo, nombre)")
+        .eq("salon_id", salonId)
+        .eq("activo", true);
+
+      if (error) throw error;
+      setCursosSalon(data || []);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error al cargar cursos del salón");
+    }
+  };
+
+  const handleAddCursoToSalon = async (cursoId: string) => {
+    if (!selectedSalon) return;
+
+    try {
+      const { error } = await supabase
+        .from("salon_cursos")
+        .insert({
+          salon_id: selectedSalon.id,
+          curso_id: cursoId,
+          activo: true,
+        });
+
+      if (error) throw error;
+      toast.success("Curso agregado al salón");
+      loadCursosSalon(selectedSalon.id);
+    } catch (error: any) {
+      console.error("Error:", error);
+      if (error.code === "23505") {
+        toast.error("Este curso ya está asignado al salón");
+      } else {
+        toast.error("Error al agregar curso");
+      }
+    }
+  };
+
+  const handleRemoveCursoFromSalon = async (salonCursoId: string) => {
+    try {
+      const { error } = await supabase
+        .from("salon_cursos")
+        .delete()
+        .eq("id", salonCursoId);
+
+      if (error) throw error;
+      toast.success("Curso eliminado del salón");
+      if (selectedSalon) {
+        loadCursosSalon(selectedSalon.id);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error al eliminar curso");
+    }
+  };
+
+  const handleOpenCompetencias = async (salonCurso: any) => {
+    setSelectedSalonCurso(salonCurso);
+    await loadCompetencias(salonCurso.id);
+    setCompetenciasDialogOpen(true);
+  };
+
+  const loadCompetencias = async (salonCursoId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("competencias")
+        .select("*")
+        .eq("salon_curso_id", salonCursoId)
+        .order("nombre");
+
+      if (error) throw error;
+      setCompetencias(data || []);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error al cargar competencias");
+    }
+  };
+
+  const handleAddCompetencia = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSalonCurso) return;
+
+    try {
+      const porcentaje = parseFloat(competenciaForm.porcentaje);
+      if (isNaN(porcentaje) || porcentaje <= 0 || porcentaje > 100) {
+        toast.error("El porcentaje debe ser entre 0 y 100");
+        return;
+      }
+
+      // Verificar que la suma de porcentajes no exceda 100
+      const sumaActual = competencias.reduce((sum, c) => sum + parseFloat(c.porcentaje), 0);
+      if (sumaActual + porcentaje > 100) {
+        toast.error(`La suma de porcentajes no puede exceder 100%. Actual: ${sumaActual}%`);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("competencias")
+        .insert({
+          salon_curso_id: selectedSalonCurso.id,
+          nombre: competenciaForm.nombre,
+          descripcion: competenciaForm.descripcion,
+          porcentaje: porcentaje,
+        });
+
+      if (error) throw error;
+      toast.success("Competencia agregada");
+      setCompetenciaForm({ nombre: "", descripcion: "", porcentaje: "" });
+      loadCompetencias(selectedSalonCurso.id);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error al agregar competencia");
+    }
+  };
+
+  const handleDeleteCompetencia = async (competenciaId: string) => {
+    if (!confirm("¿Eliminar esta competencia?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("competencias")
+        .delete()
+        .eq("id", competenciaId);
+
+      if (error) throw error;
+      toast.success("Competencia eliminada");
+      if (selectedSalonCurso) {
+        loadCompetencias(selectedSalonCurso.id);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Error al eliminar competencia");
     }
   };
 
@@ -509,6 +662,14 @@ export function Salones() {
                       >
                         <Users className="h-4 w-4" />
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => handleOpenCursos(salon)}
+                        title="Gestionar cursos"
+                      >
+                        <BookOpen className="h-4 w-4" />
+                      </Button>
                       <Button variant="outline" size="icon" onClick={() => handleEdit(salon)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -604,6 +765,185 @@ export function Salones() {
             )}
             <div className="flex justify-end">
               <Button variant="outline" onClick={() => setVerEstudiantesDialogOpen(false)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cursosDialogOpen} onOpenChange={setCursosDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Gestionar Cursos - {selectedSalon?.codigo}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <Label>Agregar Curso</Label>
+              <Select onValueChange={handleAddCursoToSalon}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar curso" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cursos.map((curso) => (
+                    <SelectItem key={curso.id} value={curso.id}>
+                      {curso.codigo} - {curso.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <h3 className="font-semibold mb-4">Cursos Asignados</h3>
+              {cursosSalon.length > 0 ? (
+                <div className="space-y-3">
+                  {cursosSalon.map((sc) => (
+                    <Card key={sc.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{sc.cursos?.nombre}</p>
+                            <p className="text-sm text-muted-foreground">{sc.cursos?.codigo}</p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenCompetencias(sc)}
+                            >
+                              <BookOpen className="h-4 w-4 mr-2" />
+                              Competencias
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleRemoveCursoFromSalon(sc.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No hay cursos asignados a este salón
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setCursosDialogOpen(false)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={competenciasDialogOpen} onOpenChange={setCompetenciasDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Competencias - {selectedSalonCurso?.cursos?.nombre}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <form onSubmit={handleAddCompetencia} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="nombre-comp">Nombre de la Competencia</Label>
+                  <Input
+                    id="nombre-comp"
+                    value={competenciaForm.nombre}
+                    onChange={(e) => setCompetenciaForm({ ...competenciaForm, nombre: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="porcentaje">Porcentaje (%)</Label>
+                  <Input
+                    id="porcentaje"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={competenciaForm.porcentaje}
+                    onChange={(e) => setCompetenciaForm({ ...competenciaForm, porcentaje: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="descripcion-comp">Descripción</Label>
+                <Input
+                  id="descripcion-comp"
+                  value={competenciaForm.descripcion}
+                  onChange={(e) => setCompetenciaForm({ ...competenciaForm, descripcion: e.target.value })}
+                />
+              </div>
+              <Button type="submit">
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Competencia
+              </Button>
+            </form>
+
+            <div>
+              <h3 className="font-semibold mb-4">
+                Competencias Configuradas
+                {competencias.length > 0 && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    (Total: {competencias.reduce((sum, c) => sum + parseFloat(c.porcentaje), 0).toFixed(2)}%)
+                  </span>
+                )}
+              </h3>
+              {competencias.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Competencia</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Porcentaje</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {competencias.map((comp) => (
+                      <TableRow key={comp.id}>
+                        <TableCell className="font-medium">{comp.nombre}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {comp.descripcion || "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge>{comp.porcentaje}%</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteCompetencia(comp.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No hay competencias configuradas para este curso
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setCompetenciasDialogOpen(false)}>
                 Cerrar
               </Button>
             </div>
