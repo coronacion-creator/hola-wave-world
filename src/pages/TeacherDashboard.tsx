@@ -904,14 +904,18 @@ const TeacherDashboard = () => {
 
                   {selectedCursoEval && competenciasEval.length > 0 && estudiantesEval.length > 0 && (
                     <div className="space-y-8">
-                      {/* Evaluaciones Guardadas - Vista por Estudiante */}
-                      {evaluacionesGuardadas.length > 0 && (
-                        <Card className="border-2">
-                          <CardHeader>
-                            <CardTitle className="text-xl">Evaluaciones Registradas</CardTitle>
-                            <CardDescription>Consulta las evaluaciones guardadas por estudiante</CardDescription>
-                          </CardHeader>
-                          <CardContent>
+                      {/* Evaluaciones Guardadas - Vista por Estudiante - SIEMPRE VISIBLE */}
+                      <Card className="border-2">
+                        <CardHeader>
+                          <CardTitle className="text-xl">Evaluaciones Registradas</CardTitle>
+                          <CardDescription>Consulta las evaluaciones guardadas por estudiante</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {evaluacionesGuardadas.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              No hay evaluaciones registradas aún
+                            </div>
+                          ) : (
                             <Table>
                               <TableHeader>
                                 <TableRow>
@@ -973,9 +977,9 @@ const TeacherDashboard = () => {
                                 })}
                               </TableBody>
                             </Table>
-                          </CardContent>
-                        </Card>
-                      )}
+                          )}
+                        </CardContent>
+                      </Card>
 
                       {/* Formulario de Nueva Evaluación */}
                       <Card className="border-2 border-primary/20">
@@ -1330,85 +1334,145 @@ const TeacherDashboard = () => {
 
       {/* Modal para ver notas del estudiante */}
       <Dialog open={verNotasEstudianteModal} onOpenChange={setVerNotasEstudianteModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Notas de {estudianteSeleccionado?.apellidos}, {estudianteSeleccionado?.nombres}
             </DialogTitle>
           </DialogHeader>
           {estudianteSeleccionado && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="text-sm text-muted-foreground">DNI</p>
-                  <p className="font-semibold">{estudianteSeleccionado.dni}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Evaluaciones</p>
-                  <p className="font-semibold">{estudianteSeleccionado.evaluaciones?.length || 0}</p>
-                </div>
-              </div>
+            <div className="space-y-6">
+              {/* Agrupar evaluaciones por nombre */}
+              {(() => {
+                const evaluacionesPorNombre: Record<string, any[]> = {};
+                
+                // Agrupar por el nombre de la evaluación (extraer el nombre antes del " - ")
+                estudianteSeleccionado.evaluaciones?.forEach((ev: any) => {
+                  const nombreEval = ev.tipo_evaluacion.split(' - ')[0] || ev.tipo_evaluacion;
+                  if (!evaluacionesPorNombre[nombreEval]) {
+                    evaluacionesPorNombre[nombreEval] = [];
+                  }
+                  evaluacionesPorNombre[nombreEval].push(ev);
+                });
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Competencia</TableHead>
-                    <TableHead>Nota</TableHead>
-                    <TableHead>Peso</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-center">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {estudianteSeleccionado.evaluaciones?.map((evaluacion: any) => (
-                    <TableRow key={evaluacion.id}>
-                      <TableCell>{evaluacion.tipo_evaluacion}</TableCell>
-                      <TableCell>
-                        {editandoEvaluacion === evaluacion.id ? (
-                          <Input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="20"
-                            defaultValue={evaluacion.nota}
-                            className="w-20"
-                            onBlur={(e) => handleEditarEvaluacion(evaluacion.id, parseFloat(e.target.value))}
-                            autoFocus
-                          />
-                        ) : (
-                          <span className={`text-lg font-bold ${
-                            evaluacion.nota >= 10.5 ? "text-green-600" : "text-red-600"
-                          }`}>
-                            {evaluacion.nota}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>{(evaluacion.peso * 100).toFixed(0)}%</TableCell>
-                      <TableCell>
-                        {evaluacion.fecha_evaluacion ? format(new Date(evaluacion.fecha_evaluacion), "dd/MM/yyyy") : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditandoEvaluacion(evaluacion.id)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEliminarEvaluacion(evaluacion.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                // Calcular promedios por evaluación
+                const promediosPorEvaluacion = Object.entries(evaluacionesPorNombre).map(([nombre, evals]) => {
+                  const promedio = evals.reduce((acc, ev) => {
+                    return acc + (Number(ev.nota) * Number(ev.peso));
+                  }, 0);
+                  return { nombre, promedio, evaluaciones: evals };
+                });
+
+                // Calcular promedio general (promedio de los promedios)
+                const promedioGeneral = promediosPorEvaluacion.length > 0
+                  ? promediosPorEvaluacion.reduce((acc, item) => acc + item.promedio, 0) / promediosPorEvaluacion.length
+                  : 0;
+
+                return (
+                  <>
+                    {/* Resumen del estudiante */}
+                    <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
+                      <div>
+                        <p className="text-sm text-muted-foreground">DNI</p>
+                        <p className="font-semibold">{estudianteSeleccionado.dni}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Evaluaciones</p>
+                        <p className="font-semibold">{promediosPorEvaluacion.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Promedio General</p>
+                        <p className={`text-2xl font-bold ${
+                          promedioGeneral >= 10.5 ? "text-green-600" : "text-red-600"
+                        }`}>
+                          {promedioGeneral.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Mostrar cada evaluación con su promedio */}
+                    {promediosPorEvaluacion.map(({ nombre, promedio, evaluaciones }) => (
+                      <Card key={nombre} className="border-2">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">{nombre}</CardTitle>
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Promedio de esta evaluación</p>
+                              <p className={`text-xl font-bold ${
+                                promedio >= 10.5 ? "text-green-600" : "text-red-600"
+                              }`}>
+                                {promedio.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Competencia</TableHead>
+                                <TableHead>Nota</TableHead>
+                                <TableHead>Peso</TableHead>
+                                <TableHead>Fecha</TableHead>
+                                <TableHead className="text-center">Acciones</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {evaluaciones.map((evaluacion: any) => (
+                                <TableRow key={evaluacion.id}>
+                                  <TableCell>{evaluacion.tipo_evaluacion.split(' - ')[1] || evaluacion.tipo_evaluacion}</TableCell>
+                                  <TableCell>
+                                    {editandoEvaluacion === evaluacion.id ? (
+                                      <Input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="20"
+                                        defaultValue={evaluacion.nota}
+                                        className="w-20"
+                                        onBlur={(e) => handleEditarEvaluacion(evaluacion.id, parseFloat(e.target.value))}
+                                        autoFocus
+                                      />
+                                    ) : (
+                                      <span className={`text-lg font-bold ${
+                                        evaluacion.nota >= 10.5 ? "text-green-600" : "text-red-600"
+                                      }`}>
+                                        {evaluacion.nota}
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>{(evaluacion.peso * 100).toFixed(0)}%</TableCell>
+                                  <TableCell>
+                                    {evaluacion.fecha_evaluacion ? format(new Date(evaluacion.fecha_evaluacion), "dd/MM/yyyy") : '-'}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setEditandoEvaluacion(evaluacion.id)}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleEliminarEvaluacion(evaluacion.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </>
+                );
+              })()}
 
               <div className="flex justify-end">
                 <Button variant="outline" onClick={() => setVerNotasEstudianteModal(false)}>
