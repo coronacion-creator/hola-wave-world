@@ -260,26 +260,37 @@ const StudentDashboard = () => {
 
   const loadPlanPago = async (estudianteId: string) => {
     try {
-      const { data: plan } = await supabase
-        .from("planes_pago")
-        .select(`
-          *,
-          ciclos_academicos(nombre)
-        `)
+      // Obtener la matrícula activa del estudiante
+      const { data: matricula } = await supabase
+        .from("matriculas")
+        .select("plan_pago_id")
         .eq("estudiante_id", estudianteId)
-        .eq("activo", true)
+        .eq("estado", "activa")
+        .not("plan_pago_id", "is", null)
         .single();
 
-      if (plan) {
-        setPlanPago(plan);
-        
-        const { data: cuotasData } = await supabase
-          .from("cuotas_pago")
-          .select("*")
-          .eq("plan_pago_id", plan.id)
-          .order("numero_cuota", { ascending: true });
-        
-        setCuotas(cuotasData || []);
+      if (matricula?.plan_pago_id) {
+        // Obtener el plan de pagos asignado a la matrícula
+        const { data: plan } = await supabase
+          .from("planes_pago")
+          .select(`
+            *,
+            ciclos_academicos(nombre)
+          `)
+          .eq("id", matricula.plan_pago_id)
+          .single();
+
+        if (plan) {
+          setPlanPago(plan);
+          
+          const { data: cuotasData } = await supabase
+            .from("cuotas_pago")
+            .select("*")
+            .eq("plan_pago_id", plan.id)
+            .order("numero_cuota", { ascending: true });
+          
+          setCuotas(cuotasData || []);
+        }
       }
     } catch (error) {
       console.error("Error loading plan de pago:", error);
