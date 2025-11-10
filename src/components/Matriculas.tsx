@@ -16,6 +16,7 @@ const Matriculas = () => {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
+  const [viewMatriculaOpen, setViewMatriculaOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [selectedMatricula, setSelectedMatricula] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -171,10 +172,28 @@ const Matriculas = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Primero eliminar registros relacionados en estado_academico
+      const { error: estadoError } = await supabase
+        .from("estado_academico")
+        .delete()
+        .eq("matricula_id", id);
+      
+      if (estadoError) throw estadoError;
+
+      // Luego eliminar registros relacionados en evaluaciones
+      const { error: evalError } = await supabase
+        .from("evaluaciones")
+        .delete()
+        .eq("matricula_id", id);
+      
+      if (evalError) throw evalError;
+
+      // Finalmente eliminar la matrícula
       const { error } = await supabase
         .from("matriculas")
         .delete()
         .eq("id", id);
+      
       if (error) throw error;
     },
     onSuccess: () => {
@@ -281,6 +300,11 @@ const Matriculas = () => {
       setSelectedPlan(data);
       setViewOpen(true);
     }
+  };
+
+  const verDetalleMatricula = (matricula: any) => {
+    setSelectedMatricula(matricula);
+    setViewMatriculaOpen(true);
   };
 
   return (
@@ -467,6 +491,13 @@ const Matriculas = () => {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => verDetalleMatricula(matricula)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => handleEdit(matricula)}
                       >
                         <Edit className="h-4 w-4" />
@@ -475,7 +506,7 @@ const Matriculas = () => {
                         size="sm"
                         variant="destructive"
                         onClick={() => {
-                          if (confirm("¿Está seguro de eliminar esta matrícula?")) {
+                          if (confirm("¿Está seguro de eliminar esta matrícula? Se eliminarán también las evaluaciones y el estado académico asociado.")) {
                             deleteMutation.mutate(matricula.id);
                           }
                         }}
@@ -490,6 +521,71 @@ const Matriculas = () => {
           </Table>
         )}
       </CardContent>
+
+      {/* Dialog para ver detalle de matrícula */}
+      <Dialog open={viewMatriculaOpen} onOpenChange={setViewMatriculaOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Detalle de Matrícula</DialogTitle>
+          </DialogHeader>
+          {selectedMatricula && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">Estudiante:</span>
+                  <span>{selectedMatricula.estudiantes?.nombres} {selectedMatricula.estudiantes?.apellidos}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">DNI:</span>
+                  <span>{selectedMatricula.estudiantes?.dni}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Grado y Sección:</span>
+                  <span>{selectedMatricula.grados_secciones?.nivel} - {selectedMatricula.grados_secciones?.grado} "{selectedMatricula.grados_secciones?.seccion}"</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Sede:</span>
+                  <span>{selectedMatricula.sedes?.nombre} - {selectedMatricula.sedes?.ciudad}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Periodo Académico:</span>
+                  <span>{selectedMatricula.periodo_academico}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Fecha de Matrícula:</span>
+                  <span>{new Date(selectedMatricula.fecha_matricula).toLocaleDateString("es-PE")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium">Estado:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    selectedMatricula.estado === "activa"
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
+                  }`}>
+                    {selectedMatricula.estado}
+                  </span>
+                </div>
+                {selectedMatricula.plan_pago_id && (
+                  <div className="flex justify-between">
+                    <span className="font-medium">Plan de Pago:</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        verPlanPago(selectedMatricula.plan_pago_id!);
+                        setViewMatriculaOpen(false);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Ver Plan
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog para editar matrícula */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
