@@ -162,13 +162,37 @@ const StudentDashboard = () => {
           competencias = comps || [];
         }
 
+        // Cargar evaluaciones del estudiante para este curso
+        const { data: evaluaciones } = await supabase
+          .from("evaluaciones")
+          .select("*")
+          .eq("matricula_id", m.id)
+          .order("fecha_evaluacion", { ascending: false });
+
+        // Agrupar evaluaciones por nombre
+        const evaluacionesPorNombre: Record<string, any[]> = {};
+        (evaluaciones || []).forEach((ev: any) => {
+          const nombreEval = ev.tipo_evaluacion.split(' - ')[0] || ev.tipo_evaluacion;
+          if (!evaluacionesPorNombre[nombreEval]) {
+            evaluacionesPorNombre[nombreEval] = [];
+          }
+          evaluacionesPorNombre[nombreEval].push(ev);
+        });
+
+        // Calcular promedios por evaluación
+        const evaluacionesAgrupadas = Object.entries(evaluacionesPorNombre).map(([nombre, evals]) => {
+          const promedio = evals.reduce((acc, ev) => acc + (Number(ev.nota) * Number(ev.peso)), 0);
+          return { nombre, promedio, evaluaciones: evals };
+        });
+
         return {
           id: m.cursos?.id,
           nombre: m.cursos?.nombre,
           codigo: m.cursos?.codigo,
           promedio: m.estado_academico?.[0]?.promedio || 0,
           estado: m.estado_academico?.[0]?.estado || "en_curso",
-          competencias
+          competencias,
+          evaluacionesAgrupadas
         };
       })
     );
@@ -532,30 +556,84 @@ const StudentDashboard = () => {
                       <div className="flex items-center justify-between">
                         <CardTitle>{curso.nombre}</CardTitle>
                         <Badge variant={curso.promedio >= 10.5 ? "default" : "destructive"}>
-                          Promedio: {curso.promedio.toFixed(2)}
+                          Promedio General: {curso.promedio.toFixed(2)}
                         </Badge>
                       </div>
                       <CardDescription>Código: {curso.codigo}</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <h4 className="font-semibold mb-3">Competencias</h4>
-                      {curso.competencias.length > 0 ? (
-                        <div className="space-y-2">
-                          {curso.competencias.map((comp: any) => (
-                            <div key={comp.id} className="flex items-center justify-between p-2 border rounded">
-                              <div className="flex-1">
-                                <div className="font-medium">{comp.nombre}</div>
-                                {comp.descripcion && (
-                                  <div className="text-sm text-muted-foreground">{comp.descripcion}</div>
-                                )}
+                    <CardContent className="space-y-6">
+                      {/* Competencias */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Competencias</h4>
+                        {curso.competencias.length > 0 ? (
+                          <div className="space-y-2">
+                            {curso.competencias.map((comp: any) => (
+                              <div key={comp.id} className="flex items-center justify-between p-2 border rounded">
+                                <div className="flex-1">
+                                  <div className="font-medium">{comp.nombre}</div>
+                                  {comp.descripcion && (
+                                    <div className="text-sm text-muted-foreground">{comp.descripcion}</div>
+                                  )}
+                                </div>
+                                <Badge variant="outline">{comp.porcentaje}%</Badge>
                               </div>
-                              <Badge variant="outline">{comp.porcentaje}%</Badge>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground">No hay competencias asignadas</p>
-                      )}
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">No hay competencias asignadas</p>
+                        )}
+                      </div>
+
+                      {/* Evaluaciones */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Mis Evaluaciones</h4>
+                        {curso.evaluacionesAgrupadas && curso.evaluacionesAgrupadas.length > 0 ? (
+                          <div className="space-y-4">
+                            {curso.evaluacionesAgrupadas.map((evaluacion: any) => (
+                              <Card key={evaluacion.nombre} className="border-2">
+                                <CardHeader className="pb-3">
+                                  <div className="flex items-center justify-between">
+                                    <CardTitle className="text-base">{evaluacion.nombre}</CardTitle>
+                                    <Badge variant={evaluacion.promedio >= 10.5 ? "default" : "destructive"} className="text-base">
+                                      {evaluacion.promedio.toFixed(2)}
+                                    </Badge>
+                                  </div>
+                                </CardHeader>
+                                <CardContent>
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead>Competencia</TableHead>
+                                        <TableHead>Nota</TableHead>
+                                        <TableHead>Peso</TableHead>
+                                        <TableHead>Fecha</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {evaluacion.evaluaciones.map((ev: any) => (
+                                        <TableRow key={ev.id}>
+                                          <TableCell>{ev.tipo_evaluacion.split(' - ')[1] || ev.tipo_evaluacion}</TableCell>
+                                          <TableCell>
+                                            <span className={`font-bold ${ev.nota >= 10.5 ? "text-green-600" : "text-red-600"}`}>
+                                              {ev.nota}
+                                            </span>
+                                          </TableCell>
+                                          <TableCell>{(ev.peso * 100).toFixed(0)}%</TableCell>
+                                          <TableCell>
+                                            {ev.fecha_evaluacion ? format(new Date(ev.fecha_evaluacion), "dd/MM/yyyy") : '-'}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">No tienes evaluaciones registradas aún</p>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
