@@ -260,32 +260,56 @@ const StudentDashboard = () => {
 
   const loadPlanPago = async (estudianteId: string) => {
     try {
-      // Buscar el plan de pagos activo del estudiante
-      const { data: plan, error: planError } = await supabase
-        .from("planes_pago")
-        .select(`
-          *,
-          ciclos_academicos(nombre)
-        `)
+      // 1) Intentar por matrícula activa con plan asignado
+      const { data: matricula } = await supabase
+        .from("matriculas")
+        .select("plan_pago_id")
         .eq("estudiante_id", estudianteId)
-        .eq("activo", true)
+        .eq("estado", "activa")
+        .not("plan_pago_id", "is", null)
+        .order("fecha_matricula", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (planError) {
-        console.error("Error loading plan de pago:", planError);
-        return;
+      let plan = null as any;
+
+      if (matricula?.plan_pago_id) {
+        const { data: planByMat } = await supabase
+          .from("planes_pago")
+          .select(`
+            *,
+            ciclos_academicos(nombre)
+          `)
+          .eq("id", matricula.plan_pago_id)
+          .maybeSingle();
+        plan = planByMat;
+      }
+
+      // 2) Si no se encontró por matrícula, buscar por estudiante_id activo
+      if (!plan) {
+        const { data: planByStudent } = await supabase
+          .from("planes_pago")
+          .select(`
+            *,
+            ciclos_academicos(nombre)
+          `)
+          .eq("estudiante_id", estudianteId)
+          .eq("activo", true)
+          .maybeSingle();
+        plan = planByStudent;
       }
 
       if (plan) {
         setPlanPago(plan);
-        
         const { data: cuotasData } = await supabase
           .from("cuotas_pago")
           .select("*")
           .eq("plan_pago_id", plan.id)
           .order("numero_cuota", { ascending: true });
-        
         setCuotas(cuotasData || []);
+      } else {
+        setPlanPago(null);
+        setCuotas([]);
       }
     } catch (error) {
       console.error("Error loading plan de pago:", error);
