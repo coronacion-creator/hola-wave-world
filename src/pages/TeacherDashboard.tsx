@@ -115,8 +115,9 @@ const TeacherDashboard = () => {
     if (selectedCursoEval) {
       loadCompetenciasCurso(selectedCursoEval);
       loadEstudiantesSalon(selectedSalonEval);
+      loadEvaluacionesExistentes();
     }
-  }, [selectedCursoEval]);
+  }, [selectedCursoEval, estudiantesEval]);
 
   useEffect(() => {
     if (selectedSalonStats) {
@@ -936,10 +937,26 @@ const TeacherDashboard = () => {
                                   
                                   if (evaluacionesEstudiante.length === 0) return null;
 
-                                  // Calcular promedio del estudiante
-                                  const promedio = evaluacionesEstudiante.reduce((acc, ev) => {
-                                    return acc + (Number(ev.nota) * Number(ev.peso));
-                                  }, 0);
+                                  // Calcular promedio general correctamente
+                                  // 1. Agrupar evaluaciones por nombre
+                                  const evaluacionesPorNombre: Record<string, any[]> = {};
+                                  evaluacionesEstudiante.forEach((ev: any) => {
+                                    const nombreEval = ev.tipo_evaluacion.split(' - ')[0] || ev.tipo_evaluacion;
+                                    if (!evaluacionesPorNombre[nombreEval]) {
+                                      evaluacionesPorNombre[nombreEval] = [];
+                                    }
+                                    evaluacionesPorNombre[nombreEval].push(ev);
+                                  });
+
+                                  // 2. Calcular promedio por cada evaluación
+                                  const promediosPorEvaluacion = Object.values(evaluacionesPorNombre).map(evals => {
+                                    return evals.reduce((acc, ev) => acc + (Number(ev.nota) * Number(ev.peso)), 0);
+                                  });
+
+                                  // 3. Calcular promedio general (promedio de los promedios)
+                                  const promedio = promediosPorEvaluacion.length > 0
+                                    ? promediosPorEvaluacion.reduce((acc, p) => acc + p, 0) / promediosPorEvaluacion.length
+                                    : 0;
 
                                   return (
                                     <TableRow key={estudiante.id}>
