@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, BookOpen, Calendar as CalendarIcon, Trophy, BarChart3, LogOut } from "lucide-react";
+import { GraduationCap, BookOpen, Calendar as CalendarIcon, Trophy, BarChart3, LogOut, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const COLORS = {
   aprobado: "hsl(var(--chart-2))",
@@ -42,6 +43,14 @@ const StudentDashboard = () => {
   // Estados para Ranking
   const [ranking, setRanking] = useState<any[]>([]);
   const [myPosition, setMyPosition] = useState<number>(0);
+  
+  // Estados para Mis Pagos
+  const [planPago, setPlanPago] = useState<any>(null);
+  const [cuotas, setCuotas] = useState<any[]>([]);
+  
+  // Estado para asistencia seleccionada
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [selectedAsistencia, setSelectedAsistencia] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -127,6 +136,9 @@ const StudentDashboard = () => {
       if (estudianteSalon?.salon_id) {
         await loadRanking(estudianteSalon.salon_id, profile.estudiante_id);
       }
+      
+      // Cargar plan de pago
+      await loadPlanPago(profile.estudiante_id);
 
     } catch (error) {
       console.error("Error loading student data:", error);
@@ -246,6 +258,46 @@ const StudentDashboard = () => {
     }
   };
 
+  const loadPlanPago = async (estudianteId: string) => {
+    try {
+      const { data: plan } = await supabase
+        .from("planes_pago")
+        .select(`
+          *,
+          ciclos_academicos(nombre)
+        `)
+        .eq("estudiante_id", estudianteId)
+        .eq("activo", true)
+        .single();
+
+      if (plan) {
+        setPlanPago(plan);
+        
+        const { data: cuotasData } = await supabase
+          .from("cuotas_pago")
+          .select("*")
+          .eq("plan_pago_id", plan.id)
+          .order("numero_cuota", { ascending: true });
+        
+        setCuotas(cuotasData || []);
+      }
+    } catch (error) {
+      console.error("Error loading plan de pago:", error);
+    }
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    if (date) {
+      const asistenciaEnFecha = asistencias.find(
+        a => format(new Date(a.fecha), "yyyy-MM-dd") === format(date, "yyyy-MM-dd")
+      );
+      setSelectedAsistencia(asistenciaEnFecha || null);
+    } else {
+      setSelectedAsistencia(null);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Cargando...</div>;
   }
@@ -274,7 +326,7 @@ const StudentDashboard = () => {
         </header>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 gap-2 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-5 gap-2 h-auto p-1">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -286,6 +338,10 @@ const StudentDashboard = () => {
             <TabsTrigger value="asistencia" className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Asistencia</span>
+            </TabsTrigger>
+            <TabsTrigger value="pagos" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Mis Pagos</span>
             </TabsTrigger>
             <TabsTrigger value="ranking" className="flex items-center gap-2">
               <Trophy className="h-4 w-4" />
@@ -484,22 +540,156 @@ const StudentDashboard = () => {
             </TabsContent>
 
             <TabsContent value="asistencia">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Calendario de Asistencia</CardTitle>
-                  <CardDescription>
-                    Los días marcados indican tu asistencia a clases
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-center">
-                  <Calendar
-                    mode="multiple"
-                    selected={selectedDates}
-                    className="pointer-events-auto rounded-md border"
-                    locale={es}
-                  />
-                </CardContent>
-              </Card>
+              <div className="grid gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Calendario de Asistencia</CardTitle>
+                    <CardDescription>
+                      Los días marcados indican tu asistencia a clases. Selecciona una fecha para ver el detalle.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex justify-center">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={handleDateSelect}
+                      modifiers={{ presente: selectedDates }}
+                      modifiersClassNames={{ presente: "bg-primary text-primary-foreground" }}
+                      className="pointer-events-auto rounded-md border"
+                      locale={es}
+                    />
+                  </CardContent>
+                </Card>
+                
+                {selectedDate && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Detalle de Asistencia</CardTitle>
+                      <CardDescription>
+                        {format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {selectedAsistencia ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <span className="font-medium">Estado:</span>
+                            <Badge variant={selectedAsistencia.presente ? "default" : "destructive"}>
+                              {selectedAsistencia.presente ? "Presente" : "Ausente"}
+                            </Badge>
+                          </div>
+                          {selectedAsistencia.justificacion && (
+                            <div className="p-3 bg-muted rounded-lg">
+                              <span className="font-medium">Justificación:</span>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {selectedAsistencia.justificacion}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-center text-muted-foreground py-4">
+                          No hay registro de asistencia para esta fecha
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="pagos">
+              <div className="grid gap-4">
+                {planPago ? (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Mi Plan de Pagos</CardTitle>
+                        <CardDescription>{planPago.nombre}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Ciclo Académico</p>
+                            <p className="font-semibold">{planPago.ciclos_academicos?.nombre}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Nivel</p>
+                            <p className="font-semibold">{planPago.nivel}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Total</p>
+                            <p className="font-semibold">S/ {planPago.total?.toFixed(2)}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Pagado</p>
+                            <p className="font-semibold text-green-600">S/ {planPago.pagado?.toFixed(2)}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Restante</p>
+                            <p className="font-semibold text-orange-600">S/ {planPago.restante?.toFixed(2)}</p>
+                          </div>
+                        </div>
+                        <div className="pt-2">
+                          <Progress value={(planPago.pagado / planPago.total) * 100} className="h-3" />
+                          <p className="text-xs text-muted-foreground text-center mt-1">
+                            {((planPago.pagado / planPago.total) * 100).toFixed(1)}% pagado
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Detalle de Cuotas</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Cuota</TableHead>
+                              <TableHead>Concepto</TableHead>
+                              <TableHead>Monto</TableHead>
+                              <TableHead>Vencimiento</TableHead>
+                              <TableHead>Estado</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {cuotas.map((cuota) => (
+                              <TableRow key={cuota.id}>
+                                <TableCell>#{cuota.numero_cuota}</TableCell>
+                                <TableCell>{cuota.concepto}</TableCell>
+                                <TableCell>S/ {cuota.monto.toFixed(2)}</TableCell>
+                                <TableCell>{format(new Date(cuota.fecha_vencimiento), "dd/MM/yyyy")}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      cuota.estado === "pagado" 
+                                        ? "default" 
+                                        : cuota.estado === "pendiente" 
+                                        ? "secondary" 
+                                        : "destructive"
+                                    }
+                                  >
+                                    {cuota.estado}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-10">
+                      <CreditCard className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No tienes un plan de pagos asignado</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="ranking">
