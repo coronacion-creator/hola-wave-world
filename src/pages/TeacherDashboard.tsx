@@ -81,6 +81,7 @@ const TeacherDashboard = () => {
   const [competenciasEval, setCompetenciasEval] = useState<Competencia[]>([]);
   const [estudiantesEval, setEstudiantesEval] = useState<Estudiante[]>([]);
   const [notas, setNotas] = useState<Record<string, Record<string, string>>>({});
+  const [nombreEvaluacion, setNombreEvaluacion] = useState("");
   const [evaluacionesGuardadas, setEvaluacionesGuardadas] = useState<any[]>([]);
   const [editandoEvaluacion, setEditandoEvaluacion] = useState<string | null>(null);
   const [verNotasEstudianteModal, setVerNotasEstudianteModal] = useState(false);
@@ -483,12 +484,10 @@ const TeacherDashboard = () => {
   };
 
   const handleVerNotasEstudiante = (estudianteId: string) => {
-    const evaluacionesEstudiante = evaluacionesGuardadas.filter(ev => {
-      return ev.estudiante?.id === estudianteId || 
-             estudiantesEval.find(e => e.id === estudianteId);
-    });
-
     const estudiante = estudiantesEval.find(e => e.id === estudianteId);
+    const evaluacionesEstudiante = evaluacionesGuardadas.filter(ev => 
+      ev.estudiante?.dni === estudiante?.dni
+    );
     
     setEstudianteSeleccionado({
       ...estudiante,
@@ -538,7 +537,18 @@ const TeacherDashboard = () => {
         description: "Evaluación eliminada correctamente",
       });
 
-      loadEvaluacionesExistentes();
+      // Actualizar el estado local inmediatamente
+      setEvaluacionesGuardadas(prev => prev.filter(ev => ev.id !== evaluacionId));
+      
+      // Actualizar estudiante seleccionado si el modal está abierto
+      if (estudianteSeleccionado) {
+        setEstudianteSeleccionado(prev => ({
+          ...prev,
+          evaluaciones: prev.evaluaciones.filter((ev: any) => ev.id !== evaluacionId)
+        }));
+      }
+      
+      await loadEvaluacionesExistentes();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -553,6 +563,15 @@ const TeacherDashboard = () => {
       toast({
         title: "Error",
         description: "Selecciona un salón y curso",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!nombreEvaluacion.trim()) {
+      toast({
+        title: "Error",
+        description: "Debes ingresar un nombre para la evaluación",
         variant: "destructive",
       });
       return;
@@ -579,7 +598,7 @@ const TeacherDashboard = () => {
             const competencia = competenciasEval.find(c => c.id === competenciaId);
             evaluacionesToInsert.push({
               matricula_id: matricula.id,
-              tipo_evaluacion: competencia?.nombre || "Evaluación",
+              tipo_evaluacion: `${nombreEvaluacion} - ${competencia?.nombre || "Evaluación"}`,
               nota: parseFloat(nota),
               peso: competencia ? competencia.porcentaje / 100 : 1,
               fecha_evaluacion: format(new Date(), "yyyy-MM-dd"),
@@ -610,6 +629,7 @@ const TeacherDashboard = () => {
       loadEvaluacionesExistentes();
 
       // Limpiar formulario
+      setNombreEvaluacion("");
       const notasInit: Record<string, Record<string, string>> = {};
       estudiantesEval.forEach(est => {
         notasInit[est.id] = {};
@@ -883,76 +903,103 @@ const TeacherDashboard = () => {
                   </div>
 
                   {selectedCursoEval && competenciasEval.length > 0 && estudiantesEval.length > 0 && (
-                    <>
+                    <div className="space-y-8">
                       {/* Evaluaciones Guardadas - Vista por Estudiante */}
                       {evaluacionesGuardadas.length > 0 && (
-                        <div className="space-y-4">
-                          <h3 className="text-lg font-semibold">Evaluaciones Registradas</h3>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Estudiante</TableHead>
-                                <TableHead>DNI</TableHead>
-                                <TableHead>Evaluaciones</TableHead>
-                                <TableHead>Promedio</TableHead>
-                                <TableHead className="text-center">Acciones</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {estudiantesEval.map((estudiante) => {
-                                // Obtener evaluaciones del estudiante
-                                const evaluacionesEstudiante = evaluacionesGuardadas.filter(ev => 
-                                  ev.estudiante?.dni === estudiante.dni
-                                );
-                                
-                                if (evaluacionesEstudiante.length === 0) return null;
+                        <Card className="border-2">
+                          <CardHeader>
+                            <CardTitle className="text-xl">Evaluaciones Registradas</CardTitle>
+                            <CardDescription>Consulta las evaluaciones guardadas por estudiante</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>N°</TableHead>
+                                  <TableHead>Estudiante</TableHead>
+                                  <TableHead>DNI</TableHead>
+                                  <TableHead>Evaluaciones</TableHead>
+                                  <TableHead>Promedio</TableHead>
+                                  <TableHead className="text-center">Acciones</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {estudiantesEval.map((estudiante, index) => {
+                                  // Obtener evaluaciones del estudiante
+                                  const evaluacionesEstudiante = evaluacionesGuardadas.filter(ev => 
+                                    ev.estudiante?.dni === estudiante.dni
+                                  );
+                                  
+                                  if (evaluacionesEstudiante.length === 0) return null;
 
-                                // Calcular promedio del estudiante
-                                const promedio = evaluacionesEstudiante.reduce((acc, ev) => {
-                                  return acc + (Number(ev.nota) * Number(ev.peso));
-                                }, 0);
+                                  // Calcular promedio del estudiante
+                                  const promedio = evaluacionesEstudiante.reduce((acc, ev) => {
+                                    return acc + (Number(ev.nota) * Number(ev.peso));
+                                  }, 0);
 
-                                return (
-                                  <TableRow key={estudiante.id}>
-                                    <TableCell>
-                                      {estudiante.apellidos}, {estudiante.nombres}
-                                    </TableCell>
-                                    <TableCell>{estudiante.dni}</TableCell>
-                                    <TableCell>
-                                      <Badge variant="secondary">
-                                        {evaluacionesEstudiante.length} registrada{evaluacionesEstudiante.length !== 1 ? 's' : ''}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      <span className={`text-lg font-bold ${
-                                        promedio >= 10.5 ? "text-green-600" : "text-red-600"
-                                      }`}>
-                                        {promedio.toFixed(2)}
-                                      </span>
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center justify-center gap-2">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          onClick={() => handleVerNotasEstudiante(estudiante.id)}
-                                        >
-                                          <Eye className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        </div>
+                                  return (
+                                    <TableRow key={estudiante.id}>
+                                      <TableCell className="font-medium">{index + 1}</TableCell>
+                                      <TableCell>
+                                        {estudiante.apellidos}, {estudiante.nombres}
+                                      </TableCell>
+                                      <TableCell>{estudiante.dni}</TableCell>
+                                      <TableCell>
+                                        <Badge variant="secondary">
+                                          {evaluacionesEstudiante.length} nota{evaluacionesEstudiante.length !== 1 ? 's' : ''}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell>
+                                        <span className={`text-lg font-bold ${
+                                          promedio >= 10.5 ? "text-green-600" : "text-red-600"
+                                        }`}>
+                                          {promedio.toFixed(2)}
+                                        </span>
+                                      </TableCell>
+                                      <TableCell>
+                                        <div className="flex items-center justify-center">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleVerNotasEstudiante(estudiante.id)}
+                                          >
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            Ver Notas
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </CardContent>
+                        </Card>
                       )}
 
                       {/* Formulario de Nueva Evaluación */}
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">Registrar Nuevas Evaluaciones</h3>
-                        <div className="overflow-x-auto">
+                      <Card className="border-2 border-primary/20">
+                        <CardHeader>
+                          <CardTitle className="text-xl">Registrar Nuevas Evaluaciones</CardTitle>
+                          <CardDescription>Ingresa las notas de los estudiantes por competencia</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          {/* Campo para nombre de evaluación */}
+                          <div className="bg-muted p-4 rounded-lg">
+                            <Label htmlFor="nombreEvaluacion" className="text-base font-semibold">
+                              Nombre de la Evaluación *
+                            </Label>
+                            <Input
+                              id="nombreEvaluacion"
+                              type="text"
+                              placeholder="Ej: Examen Parcial 1, Práctica Calificada, etc."
+                              value={nombreEvaluacion}
+                              onChange={(e) => setNombreEvaluacion(e.target.value)}
+                              className="mt-2"
+                            />
+                          </div>
+
+                          <div className="overflow-x-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -1035,16 +1082,33 @@ const TeacherDashboard = () => {
                               })}
                             </TableBody>
                           </Table>
-                        </div>
+                          </div>
 
-                        <div className="flex justify-end">
-                          <Button onClick={handleGuardarEvaluaciones}>
-                            <Save className="h-4 w-4 mr-2" />
-                            Guardar Evaluaciones
-                          </Button>
-                        </div>
-                      </div>
-                    </>
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="outline" 
+                              onClick={() => {
+                                setNombreEvaluacion("");
+                                const notasInit: Record<string, Record<string, string>> = {};
+                                estudiantesEval.forEach(est => {
+                                  notasInit[est.id] = {};
+                                  competenciasEval.forEach(comp => {
+                                    notasInit[est.id][comp.id] = "";
+                                  });
+                                });
+                                setNotas(notasInit);
+                              }}
+                            >
+                              Limpiar
+                            </Button>
+                            <Button onClick={handleGuardarEvaluaciones}>
+                              <Save className="h-4 w-4 mr-2" />
+                              Guardar Evaluaciones
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                   )}
 
                   {selectedCursoEval && competenciasEval.length === 0 && (
