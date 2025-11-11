@@ -109,7 +109,7 @@ const StudentDashboard = () => {
       if (matriculas) {
         // Calcular rendimiento general
         const totalCursos = matriculas.length;
-        const aprobados = matriculas.filter(m => m.estado_academico?.[0]?.promedio >= 10.5).length;
+        const aprobados = matriculas.filter(m => m.estado_academico?.[0]?.promedio >= 11).length;
         const desaprobados = totalCursos - aprobados;
 
         setRendimientoGeneral([
