@@ -1024,12 +1024,13 @@ const TeacherDashboard = () => {
                             </Label>
                             <Input
                               id="nombreEvaluacion"
-                              type="tel" // Tipo de teléfono, que en móviles puede dar un teclado numérico
+                              type="text"
                               placeholder="Ej: 123"
                               value={nombreEvaluacion}
                               onChange={(e) => {
-                                const nuevoValor = e.target.value.replace(/[^0-9]/g, ""); // Asegura solo números
-                                setNombreEvaluacion(nuevoValor);
+                                // Solo números
+                                const soloNumeros = e.target.value.replace(/[^0-9]/g, "");
+                                setNombreEvaluacion(soloNumeros);
                               }}
                               className="mt-2"
                             />
