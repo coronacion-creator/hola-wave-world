@@ -1083,37 +1083,17 @@ const TeacherDashboard = () => {
                                         <TableCell key={comp.id}>
                                           <Input
                                             type="number"
-                                            step="0.1" // Permitir decimales
+                                            step="0.1"
                                             min="0"
                                             max="20"
                                             className="w-20"
-                                            value={notas[estudiante.id]?.[comp.id] || ""} // Mantén el valor vacío si no hay nota
-                                            onChange={(e) => {
-                                              const value = e.target.value;
-
-                                              // Si el valor está vacío, dejalo en blanco
-                                              if (value === "") {
-                                                setNotas((prev) => ({
-                                                  ...prev,
-                                                  [estudiante.id]: {
-                                                    ...prev[estudiante.id],
-                                                    [comp.id]: "", // Deja vacío si el usuario borra
-                                                  },
-                                                }));
-                                              } else {
-                                                // Asegúrate de que el valor sea un número dentro del rango
-                                                const numericValue = parseFloat(value);
-                                                if (!isNaN(numericValue) && numericValue >= 0 && numericValue <= 20) {
-                                                  setNotas((prev) => ({
-                                                    ...prev,
-                                                    [estudiante.id]: {
-                                                      ...prev[estudiante.id],
-                                                      [comp.id]: numericValue, // Guarda el número
-                                                    },
-                                                  }));
-                                                }
-                                              }
-                                            }}
+                                            value={notas[estudiante.id]?.[comp.id] || ""}
+                                            onChange={(e) =>
+                                              setNotas((prev) => ({
+                                                ...prev,
+                                                [estudiante.id]: { ...prev[estudiante.id], [comp.id]: e.target.value },
+                                              }))
+                                            }
                                             placeholder="0-20"
                                           />
                                         </TableCell>
