@@ -7,9 +7,7 @@ const Dashboard = () => {
   const { data: estudiantes } = useQuery({
     queryKey: ["estudiantes-count"],
     queryFn: async () => {
-      const { count } = await supabase
-        .from("estudiantes")
-        .select("*", { count: "exact", head: true });
+      const { count } = await supabase.from("estudiantes").select("*", { count: "exact", head: true });
       return count || 0;
     },
   });
@@ -28,10 +26,7 @@ const Dashboard = () => {
   const { data: pagosTotal } = useQuery({
     queryKey: ["pagos-total"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("pagos")
-        .select("monto")
-        .eq("estado", "completado");
+      const { data } = await supabase.from("pagos").select("monto").eq("estado", "completado");
       return data?.reduce((sum, p) => sum + Number(p.monto), 0) || 0;
     },
   });
@@ -50,10 +45,7 @@ const Dashboard = () => {
   const { data: sedes } = useQuery({
     queryKey: ["sedes"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("sedes")
-        .select("*")
-        .eq("activo", true);
+      const { data } = await supabase.from("sedes").select("*").eq("activo", true);
       return data || [];
     },
   });
@@ -97,7 +89,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title} className="shadow-md hover:shadow-lg transition-shadow">
+          <Card key={stat.title} className="shadow-md hover:shadow-lg transition-shadow bg-blue-400">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
               <div className={`p-2 rounded-lg ${stat.bgColor}`}>
@@ -115,17 +107,12 @@ const Dashboard = () => {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Sedes Activas</CardTitle>
-          <CardDescription>
-            Red distribuida de EduGlobal en todo el Perú
-          </CardDescription>
+          <CardDescription>Red distribuida de EduGlobal en todo el Perú</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {sedes?.map((sede) => (
-              <div
-                key={sede.id}
-                className="p-4 rounded-lg border bg-card hover:bg-accent transition-colors"
-              >
+              <div key={sede.id} className="p-4 rounded-lg border bg-card hover:bg-accent transition-colors">
                 <h3 className="font-semibold text-lg">{sede.nombre}</h3>
                 <p className="text-sm text-muted-foreground">{sede.ciudad}</p>
                 <p className="text-xs text-muted-foreground mt-1">{sede.direccion}</p>
@@ -138,30 +125,28 @@ const Dashboard = () => {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Sobre el Sistema Distribuido</CardTitle>
-          <CardDescription>
-            Características y beneficios de la arquitectura distribuida
-          </CardDescription>
+          <CardDescription>Características y beneficios de la arquitectura distribuida</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="font-semibold text-primary">Control de Concurrencia</h4>
             <p className="text-sm text-muted-foreground">
-              Implementación de bloqueos (FOR UPDATE) para evitar conflictos en operaciones simultáneas
-              de múltiples sedes, especialmente en inventario y pagos.
+              Implementación de bloqueos (FOR UPDATE) para evitar conflictos en operaciones simultáneas de múltiples
+              sedes, especialmente en inventario y pagos.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="font-semibold text-secondary">Transacciones ACID</h4>
             <p className="text-sm text-muted-foreground">
-              Garantía de atomicidad, consistencia, aislamiento y durabilidad en todas las operaciones
-              críticas del sistema educativo.
+              Garantía de atomicidad, consistencia, aislamiento y durabilidad en todas las operaciones críticas del
+              sistema educativo.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="font-semibold text-accent">Sincronización en Tiempo Real</h4>
             <p className="text-sm text-muted-foreground">
-              Cada sede mantiene sus datos localmente con sincronización automática a la base central,
-              mejorando el rendimiento y disponibilidad.
+              Cada sede mantiene sus datos localmente con sincronización automática a la base central, mejorando el
+              rendimiento y disponibilidad.
             </p>
           </div>
         </CardContent>
