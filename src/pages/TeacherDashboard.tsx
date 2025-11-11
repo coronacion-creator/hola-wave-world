@@ -472,7 +472,30 @@ const TeacherDashboard = () => {
   };
 
   const loadEvaluacionesExistentes = async () => {
+    if (!selectedSalonEval || !selectedCursoEval) return;
+    
     try {
+      // Obtener el curso_id del salon_curso seleccionado
+      const { data: salonCurso } = await supabase
+        .from("salon_cursos")
+        .select("curso_id")
+        .eq("id", selectedCursoEval)
+        .single();
+
+      if (!salonCurso) return;
+
+      // Obtener estudiantes del salón
+      const { data: estudiantesSalon } = await supabase
+        .from("estudiantes_salones")
+        .select("estudiante_id")
+        .eq("salon_id", selectedSalonEval)
+        .eq("activo", true);
+
+      if (!estudiantesSalon || estudiantesSalon.length === 0) return;
+
+      const estudiantesIds = estudiantesSalon.map((es) => es.estudiante_id);
+
+      // Obtener matrículas del curso para estos estudiantes
       const { data: matriculas } = await supabase
         .from("matriculas")
         .select(
@@ -482,13 +505,11 @@ const TeacherDashboard = () => {
           estudiantes(nombres, apellidos, dni)
         `,
         )
-        .in(
-          "estudiante_id",
-          estudiantesEval.map((e) => e.id),
-        )
+        .in("estudiante_id", estudiantesIds)
+        .eq("curso_id", salonCurso.curso_id)
         .eq("estado", "activa");
 
-      if (!matriculas) return;
+      if (!matriculas || matriculas.length === 0) return;
 
       const { data: evaluaciones } = await supabase
         .from("evaluaciones")
