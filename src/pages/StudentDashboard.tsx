@@ -185,11 +185,16 @@ const StudentDashboard = () => {
           return { nombre, promedio, evaluaciones: evals };
         });
 
+        // Calcular promedio general del curso basado en evaluaciones
+        const promedioGeneral = evaluacionesAgrupadas.length > 0
+          ? evaluacionesAgrupadas.reduce((sum, ev) => sum + ev.promedio, 0) / evaluacionesAgrupadas.length
+          : 0;
+
         return {
           id: m.cursos?.id,
           nombre: m.cursos?.nombre,
           codigo: m.cursos?.codigo,
-          promedio: m.estado_academico?.[0]?.promedio || 0,
+          promedio: promedioGeneral,
           estado: m.estado_academico?.[0]?.estado || "en_curso",
           competencias,
           evaluacionesAgrupadas
