@@ -1025,13 +1025,9 @@ const TeacherDashboard = () => {
                             <Input
                               id="nombreEvaluacion"
                               type="text"
-                              placeholder="Ej: 123"
+                              placeholder="Ej: Examen Parcial 1, Práctica Calificada, etc."
                               value={nombreEvaluacion}
-                              onChange={(e) => {
-                                // Solo números
-                                const soloNumeros = e.target.value.replace(/[^0-9]/g, "");
-                                setNombreEvaluacion(soloNumeros);
-                              }}
+                              onChange={(e) => setNombreEvaluacion(e.target.value)}
                               className="mt-2"
                             />
                           </div>
