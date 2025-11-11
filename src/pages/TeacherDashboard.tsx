@@ -1012,7 +1012,7 @@ const TeacherDashboard = () => {
                             </Label>
                             <Input
                               id="nombreEvaluacion"
-                              type="text"
+                              type="number"
                               placeholder="Ej: Examen Parcial 1, Práctica Calificada, etc."
                               value={nombreEvaluacion}
                               onChange={(e) => setNombreEvaluacion(e.target.value)}
