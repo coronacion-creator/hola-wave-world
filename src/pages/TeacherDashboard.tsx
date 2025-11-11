@@ -128,7 +128,7 @@ const TeacherDashboard = () => {
       loadEstudiantesSalon(selectedSalonEval);
       loadEvaluacionesExistentes();
     }
-  }, [selectedCursoEval, estudiantesEval]);
+  }, [selectedCursoEval]);
 
   useEffect(() => {
     if (selectedSalonStats) {
@@ -343,15 +343,19 @@ const TeacherDashboard = () => {
       if (error) throw error;
       setCompetenciasEval(data || []);
 
-      // Inicializar notas
-      const notasInit: Record<string, Record<string, string>> = {};
-      estudiantesEval.forEach((est) => {
-        notasInit[est.id] = {};
-        (data || []).forEach((comp) => {
-          notasInit[est.id][comp.id] = "";
+      // Inicializar notas solo si está vacío o cambió el curso
+      setNotas((prevNotas) => {
+        const notasInit: Record<string, Record<string, string>> = {};
+        estudiantesEval.forEach((est) => {
+          notasInit[est.id] = prevNotas[est.id] || {};
+          (data || []).forEach((comp) => {
+            if (notasInit[est.id][comp.id] === undefined) {
+              notasInit[est.id][comp.id] = "";
+            }
+          });
         });
+        return notasInit;
       });
-      setNotas(notasInit);
     } catch (error) {
       toast({
         title: "Error",
