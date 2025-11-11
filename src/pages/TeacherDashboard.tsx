@@ -91,7 +91,7 @@ const TeacherDashboard = () => {
   const [selectedCursoEval, setSelectedCursoEval] = useState("");
   const [competenciasEval, setCompetenciasEval] = useState<Competencia[]>([]);
   const [estudiantesEval, setEstudiantesEval] = useState<Estudiante[]>([]);
-  const [notas, setNotas] = useState<Record<string, Record<string, string>>>({});
+  const [notas, setNotas] = useState<Record<string, Record<string, number | undefined>>>({});
   const [nombreEvaluacion, setNombreEvaluacion] = useState("");
   const [evaluacionesGuardadas, setEvaluacionesGuardadas] = useState<any[]>([]);
   const [editandoEvaluacion, setEditandoEvaluacion] = useState<string | null>(null);
@@ -1087,13 +1087,19 @@ const TeacherDashboard = () => {
                                             min="0"
                                             max="20"
                                             className="w-20"
-                                            value={notas[estudiante.id]?.[comp.id] || ""}
-                                            onChange={(e) =>
+                                            value={notas[estudiante.id]?.[comp.id] ?? ""}
+                                            onChange={(e) => {
+                                              const value = e.target.value;
+                                              const numValue = value === "" ? undefined : Number(value);
+
                                               setNotas((prev) => ({
                                                 ...prev,
-                                                [estudiante.id]: { ...prev[estudiante.id], [comp.id]: e.target.value },
-                                              }))
-                                            }
+                                                [estudiante.id]: {
+                                                  ...(prev[estudiante.id] || {}),
+                                                  [comp.id]: numValue,
+                                                },
+                                              }));
+                                            }}
                                             placeholder="0-20"
                                           />
                                         </TableCell>
