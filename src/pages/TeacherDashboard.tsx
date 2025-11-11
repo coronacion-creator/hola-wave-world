@@ -91,7 +91,7 @@ const TeacherDashboard = () => {
   const [selectedCursoEval, setSelectedCursoEval] = useState("");
   const [competenciasEval, setCompetenciasEval] = useState<Competencia[]>([]);
   const [estudiantesEval, setEstudiantesEval] = useState<Estudiante[]>([]);
-  const [notas, setNotas] = useState<Record<string, Record<string, number>>>({});
+  const [notas, setNotas] = useState<Record<string, Record<string, string>>>({});
   const [nombreEvaluacion, setNombreEvaluacion] = useState("");
   const [evaluacionesGuardadas, setEvaluacionesGuardadas] = useState<any[]>([]);
   const [editandoEvaluacion, setEditandoEvaluacion] = useState<string | null>(null);
