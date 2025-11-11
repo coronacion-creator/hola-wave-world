@@ -245,7 +245,7 @@ const StudentDashboard = () => {
 
       const estudiantesIds = estudiantesSalon.map(es => es.estudiante_id);
 
-      // Obtener promedios de cada estudiante
+      // Obtener promedios de cada estudiante basados en evaluaciones
       const rankingData = await Promise.all(
         estudiantesIds.map(async (estudianteId) => {
           const { data: estudiante } = await supabase
@@ -256,13 +256,45 @@ const StudentDashboard = () => {
 
           const { data: matriculas } = await supabase
             .from("matriculas")
-            .select("estado_academico(promedio)")
+            .select("id, cursos(*)")
             .eq("estudiante_id", estudianteId)
             .eq("estado", "activa");
 
-          const promedios = matriculas?.map(m => m.estado_academico?.[0]?.promedio || 0) || [];
-          const promedioGeneral = promedios.length > 0
-            ? promedios.reduce((a, b) => a + b, 0) / promedios.length
+          // Calcular promedio de cada curso basado en evaluaciones
+          const promediosPorCurso = await Promise.all(
+            (matriculas || []).map(async (m) => {
+              const { data: evaluaciones } = await supabase
+                .from("evaluaciones")
+                .select("*")
+                .eq("matricula_id", m.id);
+
+              if (!evaluaciones || evaluaciones.length === 0) return 0;
+
+              // Agrupar evaluaciones por nombre
+              const evaluacionesPorNombre: Record<string, any[]> = {};
+              evaluaciones.forEach((ev: any) => {
+                const nombreEval = ev.tipo_evaluacion.split(' - ')[0] || ev.tipo_evaluacion;
+                if (!evaluacionesPorNombre[nombreEval]) {
+                  evaluacionesPorNombre[nombreEval] = [];
+                }
+                evaluacionesPorNombre[nombreEval].push(ev);
+              });
+
+              // Calcular promedio por evaluación
+              const evaluacionesAgrupadas = Object.entries(evaluacionesPorNombre).map(([nombre, evals]) => {
+                const promedio = evals.reduce((acc, ev) => acc + (Number(ev.nota) * Number(ev.peso)), 0);
+                return promedio;
+              });
+
+              // Promedio del curso
+              return evaluacionesAgrupadas.length > 0
+                ? evaluacionesAgrupadas.reduce((sum, p) => sum + p, 0) / evaluacionesAgrupadas.length
+                : 0;
+            })
+          );
+
+          const promedioGeneral = promediosPorCurso.length > 0
+            ? promediosPorCurso.reduce((a, b) => a + b, 0) / promediosPorCurso.length
             : 0;
 
           return {
@@ -555,6 +587,27 @@ const StudentDashboard = () => {
 
             <TabsContent value="cursos">
               <div className="grid gap-4">
+                {/* Promedio Final del Ciclo Académico */}
+                {cursos.length > 0 && (
+                  <Card className="border-2 border-primary shadow-lg">
+                    <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
+                      <CardTitle className="text-2xl text-center">Promedio Final del Ciclo Académico</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="text-6xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                            {(cursos.reduce((sum, c) => sum + c.promedio, 0) / cursos.length).toFixed(2)}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Promedio de {cursos.length} {cursos.length === 1 ? 'curso' : 'cursos'}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
                 {cursos.map((curso) => (
                   <Card key={curso.id}>
                     <CardHeader>
