@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GraduationCap, BookOpen, ClipboardCheck, BarChart3, LogOut, Loader2, Eye, Save, Pencil, Trash2 } from "lucide-react";
+import {
+  GraduationCap,
+  BookOpen,
+  ClipboardCheck,
+  BarChart3,
+  LogOut,
+  Loader2,
+  Eye,
+  Save,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -132,11 +143,11 @@ const TeacherDashboard = () => {
   const loadSalonesProfesor = async () => {
     try {
       setLoading(true);
-      
+
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('profesor_id')
-        .eq('user_id', user?.id)
+        .from("profiles")
+        .select("profesor_id")
+        .eq("user_id", user?.id)
         .maybeSingle();
 
       if (!profile?.profesor_id) {
@@ -149,26 +160,26 @@ const TeacherDashboard = () => {
       }
 
       const { data: salonesData, error } = await supabase
-        .from('salones')
-        .select('*')
-        .eq('profesor_id', profile.profesor_id)
-        .eq('activo', true);
+        .from("salones")
+        .select("*")
+        .eq("profesor_id", profile.profesor_id)
+        .eq("activo", true);
 
       if (error) throw error;
 
       const salonesConEstudiantes = await Promise.all(
         (salonesData || []).map(async (salon) => {
           const { count } = await supabase
-            .from('estudiantes_salones')
-            .select('*', { count: 'exact', head: true })
-            .eq('salon_id', salon.id)
-            .eq('activo', true);
+            .from("estudiantes_salones")
+            .select("*", { count: "exact", head: true })
+            .eq("salon_id", salon.id)
+            .eq("activo", true);
 
           return {
             ...salon,
-            estudiantes_count: count || 0
+            estudiantes_count: count || 0,
           };
-        })
+        }),
       );
 
       setSalones(salonesConEstudiantes);
@@ -192,8 +203,8 @@ const TeacherDashboard = () => {
         .eq("activo", true);
 
       if (error) throw error;
-      
-      const estudiantes = data?.map(item => item.estudiantes).filter(Boolean) as Estudiante[] || [];
+
+      const estudiantes = (data?.map((item) => item.estudiantes).filter(Boolean) as Estudiante[]) || [];
       setEstudiantesDelSalon(estudiantes);
       setSelectedSalon(salon);
       setVerEstudiantesOpen(true);
@@ -215,8 +226,8 @@ const TeacherDashboard = () => {
         .eq("activo", true);
 
       if (error) throw error;
-      
-      const estudiantes = data?.map(item => item.estudiantes).filter(Boolean) as Estudiante[] || [];
+
+      const estudiantes = (data?.map((item) => item.estudiantes).filter(Boolean) as Estudiante[]) || [];
       // Ordenar alfabéticamente por apellidos
       estudiantes.sort((a, b) => a.apellidos.localeCompare(b.apellidos));
       setEstudiantesAsistencia(estudiantes);
@@ -224,7 +235,7 @@ const TeacherDashboard = () => {
 
       // Inicializar asistencias como vacío
       const asistenciasInit: Record<string, string> = {};
-      estudiantes.forEach(est => {
+      estudiantes.forEach((est) => {
         asistenciasInit[est.id] = "";
       });
       setAsistencias(asistenciasInit);
@@ -260,15 +271,15 @@ const TeacherDashboard = () => {
       const asistenciasToInsert = Object.entries(asistencias)
         .filter(([_, estado]) => estado !== "")
         .map(([estudianteId, estado]) => {
-          const matricula = matriculas?.find(m => m.estudiante_id === estudianteId);
+          const matricula = matriculas?.find((m) => m.estudiante_id === estudianteId);
           return {
             matricula_id: matricula?.id,
             fecha: format(fechaAsistencia, "yyyy-MM-dd"),
             presente: estado === "PRESENTE",
-            justificacion: estado === "TARDE" ? "Llegó tarde" : (estado === "FALTA" ? "Falta sin justificar" : null)
+            justificacion: estado === "TARDE" ? "Llegó tarde" : estado === "FALTA" ? "Falta sin justificar" : null,
           };
         })
-        .filter(a => a.matricula_id); // Solo insertar si existe matrícula
+        .filter((a) => a.matricula_id); // Solo insertar si existe matrícula
 
       if (asistenciasToInsert.length === 0) {
         toast({
@@ -278,9 +289,7 @@ const TeacherDashboard = () => {
         return;
       }
 
-      const { error } = await supabase
-        .from("asistencias")
-        .insert(asistenciasToInsert);
+      const { error } = await supabase.from("asistencias").insert(asistenciasToInsert);
 
       if (error) throw error;
 
@@ -291,7 +300,7 @@ const TeacherDashboard = () => {
 
       // Limpiar formulario
       const asistenciasInit: Record<string, string> = {};
-      estudiantesAsistencia.forEach(est => {
+      estudiantesAsistencia.forEach((est) => {
         asistenciasInit[est.id] = "";
       });
       setAsistencias(asistenciasInit);
@@ -313,7 +322,7 @@ const TeacherDashboard = () => {
         .eq("activo", true);
 
       if (error) throw error;
-      setSalonCursos(data as SalonCurso[] || []);
+      setSalonCursos((data as SalonCurso[]) || []);
     } catch (error) {
       toast({
         title: "Error",
@@ -336,9 +345,9 @@ const TeacherDashboard = () => {
 
       // Inicializar notas
       const notasInit: Record<string, Record<string, string>> = {};
-      estudiantesEval.forEach(est => {
+      estudiantesEval.forEach((est) => {
         notasInit[est.id] = {};
-        (data || []).forEach(comp => {
+        (data || []).forEach((comp) => {
           notasInit[est.id][comp.id] = "";
         });
       });
@@ -371,30 +380,34 @@ const TeacherDashboard = () => {
         // Obtener promedios de notas por curso
         const { data: matriculas } = await supabase
           .from("matriculas")
-          .select(`
+          .select(
+            `
             id,
             curso_id,
             cursos(nombre),
             estado_academico(promedio)
-          `)
+          `,
+          )
           .in("curso_id", cursosIds)
           .eq("estado", "activa");
 
         // Calcular distribución de promedios
-        const aprobados = matriculas?.filter(m => Number(m.estado_academico?.[0]?.promedio || 0) >= 10.5).length || 0;
-        const reprobados = matriculas?.filter(m => Number(m.estado_academico?.[0]?.promedio || 0) < 10.5).length || 0;
+        const aprobados = matriculas?.filter((m) => Number(m.estado_academico?.[0]?.promedio || 0) >= 10.5).length || 0;
+        const reprobados = matriculas?.filter((m) => Number(m.estado_academico?.[0]?.promedio || 0) < 10.5).length || 0;
 
         // Obtener asistencias
         const { data: asistencias } = await supabase
           .from("asistencias")
-          .select(`
+          .select(
+            `
             presente,
             matriculas!inner(id, curso_id)
-          `)
+          `,
+          )
           .in("matriculas.curso_id", cursosIds);
 
-        const presente = asistencias?.filter(a => a.presente === true).length || 0;
-        const ausente = asistencias?.filter(a => a.presente === false).length || 0;
+        const presente = asistencias?.filter((a) => a.presente === true).length || 0;
+        const ausente = asistencias?.filter((a) => a.presente === false).length || 0;
 
         setEstadisticasData({
           notasData: [
@@ -412,27 +425,31 @@ const TeacherDashboard = () => {
 
         const { data: matriculas } = await supabase
           .from("matriculas")
-          .select(`
+          .select(
+            `
             id,
             estudiantes(id),
             estado_academico(promedio)
-          `)
+          `,
+          )
           .eq("curso_id", selectedCursoStats)
           .eq("estado", "activa");
 
-        const aprobados = matriculas?.filter(m => Number(m.estado_academico?.[0]?.promedio || 0) >= 10.5).length || 0;
-        const reprobados = matriculas?.filter(m => Number(m.estado_academico?.[0]?.promedio || 0) < 10.5).length || 0;
+        const aprobados = matriculas?.filter((m) => Number(m.estado_academico?.[0]?.promedio || 0) >= 10.5).length || 0;
+        const reprobados = matriculas?.filter((m) => Number(m.estado_academico?.[0]?.promedio || 0) < 10.5).length || 0;
 
         const { data: asistencias } = await supabase
           .from("asistencias")
-          .select(`
+          .select(
+            `
             presente,
             matriculas!inner(id, curso_id)
-          `)
+          `,
+          )
           .eq("matriculas.curso_id", selectedCursoStats);
 
-        const presente = asistencias?.filter(a => a.presente === true).length || 0;
-        const ausente = asistencias?.filter(a => a.presente === false).length || 0;
+        const presente = asistencias?.filter((a) => a.presente === true).length || 0;
+        const ausente = asistencias?.filter((a) => a.presente === false).length || 0;
 
         setEstadisticasData({
           notasData: [
@@ -454,12 +471,17 @@ const TeacherDashboard = () => {
     try {
       const { data: matriculas } = await supabase
         .from("matriculas")
-        .select(`
+        .select(
+          `
           id,
           estudiante_id,
           estudiantes(nombres, apellidos, dni)
-        `)
-        .in("estudiante_id", estudiantesEval.map(e => e.id))
+        `,
+        )
+        .in(
+          "estudiante_id",
+          estudiantesEval.map((e) => e.id),
+        )
         .eq("estado", "activa");
 
       if (!matriculas) return;
@@ -467,14 +489,17 @@ const TeacherDashboard = () => {
       const { data: evaluaciones } = await supabase
         .from("evaluaciones")
         .select("*")
-        .in("matricula_id", matriculas.map(m => m.id));
+        .in(
+          "matricula_id",
+          matriculas.map((m) => m.id),
+        );
 
       // Enriquecer evaluaciones con datos del estudiante
-      const evaluacionesConEstudiante = (evaluaciones || []).map(ev => {
-        const matricula = matriculas.find(m => m.id === ev.matricula_id);
+      const evaluacionesConEstudiante = (evaluaciones || []).map((ev) => {
+        const matricula = matriculas.find((m) => m.id === ev.matricula_id);
         return {
           ...ev,
-          estudiante: matricula?.estudiantes
+          estudiante: matricula?.estudiantes,
         };
       });
 
@@ -485,24 +510,19 @@ const TeacherDashboard = () => {
   };
 
   const handleVerNotasEstudiante = (estudianteId: string) => {
-    const estudiante = estudiantesEval.find(e => e.id === estudianteId);
-    const evaluacionesEstudiante = evaluacionesGuardadas.filter(ev => 
-      ev.estudiante?.dni === estudiante?.dni
-    );
-    
+    const estudiante = estudiantesEval.find((e) => e.id === estudianteId);
+    const evaluacionesEstudiante = evaluacionesGuardadas.filter((ev) => ev.estudiante?.dni === estudiante?.dni);
+
     setEstudianteSeleccionado({
       ...estudiante,
-      evaluaciones: evaluacionesEstudiante
+      evaluaciones: evaluacionesEstudiante,
     });
     setVerNotasEstudianteModal(true);
   };
 
   const handleEditarEvaluacion = async (evaluacionId: string, nuevaNota: number) => {
     try {
-      const { error } = await supabase
-        .from("evaluaciones")
-        .update({ nota: nuevaNota })
-        .eq("id", evaluacionId);
+      const { error } = await supabase.from("evaluaciones").update({ nota: nuevaNota }).eq("id", evaluacionId);
 
       if (error) throw error;
 
@@ -526,10 +546,7 @@ const TeacherDashboard = () => {
     if (!confirm("¿Estás seguro de eliminar esta evaluación?")) return;
 
     try {
-      const { error } = await supabase
-        .from("evaluaciones")
-        .delete()
-        .eq("id", evaluacionId);
+      const { error } = await supabase.from("evaluaciones").delete().eq("id", evaluacionId);
 
       if (error) throw error;
 
@@ -539,16 +556,16 @@ const TeacherDashboard = () => {
       });
 
       // Actualizar el estado local inmediatamente
-      setEvaluacionesGuardadas(prev => prev.filter(ev => ev.id !== evaluacionId));
-      
+      setEvaluacionesGuardadas((prev) => prev.filter((ev) => ev.id !== evaluacionId));
+
       // Actualizar estudiante seleccionado si el modal está abierto
       if (estudianteSeleccionado) {
-        setEstudianteSeleccionado(prev => ({
+        setEstudianteSeleccionado((prev) => ({
           ...prev,
-          evaluaciones: prev.evaluaciones.filter((ev: any) => ev.id !== evaluacionId)
+          evaluaciones: prev.evaluaciones.filter((ev: any) => ev.id !== evaluacionId),
         }));
       }
-      
+
       await loadEvaluacionesExistentes();
     } catch (error: any) {
       toast({
@@ -591,12 +608,12 @@ const TeacherDashboard = () => {
       const evaluacionesToInsert: any[] = [];
 
       Object.entries(notas).forEach(([estudianteId, competenciasNotas]) => {
-        const matricula = matriculas?.find(m => m.estudiante_id === estudianteId);
+        const matricula = matriculas?.find((m) => m.estudiante_id === estudianteId);
         if (!matricula) return;
 
         Object.entries(competenciasNotas).forEach(([competenciaId, nota]) => {
           if (nota !== "") {
-            const competencia = competenciasEval.find(c => c.id === competenciaId);
+            const competencia = competenciasEval.find((c) => c.id === competenciaId);
             evaluacionesToInsert.push({
               matricula_id: matricula.id,
               tipo_evaluacion: `${nombreEvaluacion} - ${competencia?.nombre || "Evaluación"}`,
@@ -616,9 +633,7 @@ const TeacherDashboard = () => {
         return;
       }
 
-      const { error } = await supabase
-        .from("evaluaciones")
-        .insert(evaluacionesToInsert);
+      const { error } = await supabase.from("evaluaciones").insert(evaluacionesToInsert);
 
       if (error) throw error;
 
@@ -632,9 +647,9 @@ const TeacherDashboard = () => {
       // Limpiar formulario
       setNombreEvaluacion("");
       const notasInit: Record<string, Record<string, string>> = {};
-      estudiantesEval.forEach(est => {
+      estudiantesEval.forEach((est) => {
         notasInit[est.id] = {};
-        competenciasEval.forEach(comp => {
+        competenciasEval.forEach((comp) => {
           notasInit[est.id][comp.id] = "";
         });
       });
@@ -694,9 +709,7 @@ const TeacherDashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Mis Salones Asignados</CardTitle>
-                  <CardDescription>
-                    Gestiona tus salones y estudiantes
-                  </CardDescription>
+                  <CardDescription>Gestiona tus salones y estudiantes</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
@@ -715,9 +728,7 @@ const TeacherDashboard = () => {
                             <div className="flex items-start justify-between">
                               <div>
                                 <CardTitle className="text-lg">{salon.nombre || `Salón ${salon.codigo}`}</CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {salon.codigo}
-                                </p>
+                                <p className="text-sm text-muted-foreground mt-1">{salon.codigo}</p>
                               </div>
                               <Badge variant="secondary">{salon.nivel}</Badge>
                             </div>
@@ -731,13 +742,13 @@ const TeacherDashboard = () => {
                                 <span className="text-muted-foreground">Sección:</span> {salon.seccion}
                               </p>
                               <p className="text-sm">
-                                <span className="text-muted-foreground">Estudiantes:</span>{" "}
-                                {salon.estudiantes_count} / {salon.capacidad}
+                                <span className="text-muted-foreground">Estudiantes:</span> {salon.estudiantes_count} /{" "}
+                                {salon.capacidad}
                               </p>
                             </div>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="w-full"
                               onClick={() => handleVerEstudiantes(salon)}
                             >
@@ -757,9 +768,7 @@ const TeacherDashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Control de Asistencia</CardTitle>
-                  <CardDescription>
-                    Registra la asistencia de tus estudiantes
-                  </CardDescription>
+                  <CardDescription>Registra la asistencia de tus estudiantes</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
@@ -826,8 +835,8 @@ const TeacherDashboard = () => {
                               <TableCell>
                                 <Select
                                   value={asistencias[estudiante.id] || ""}
-                                  onValueChange={(value) => 
-                                    setAsistencias(prev => ({ ...prev, [estudiante.id]: value }))
+                                  onValueChange={(value) =>
+                                    setAsistencias((prev) => ({ ...prev, [estudiante.id]: value }))
                                   }
                                 >
                                   <SelectTrigger className="w-32">
@@ -861,9 +870,7 @@ const TeacherDashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Evaluaciones</CardTitle>
-                  <CardDescription>
-                    Registra las evaluaciones por competencias
-                  </CardDescription>
+                  <CardDescription>Registra las evaluaciones por competencias</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
@@ -884,8 +891,8 @@ const TeacherDashboard = () => {
                     </div>
                     <div>
                       <Label>Seleccionar Curso</Label>
-                      <Select 
-                        value={selectedCursoEval} 
+                      <Select
+                        value={selectedCursoEval}
                         onValueChange={setSelectedCursoEval}
                         disabled={!selectedSalonEval}
                       >
@@ -931,17 +938,17 @@ const TeacherDashboard = () => {
                               <TableBody>
                                 {estudiantesEval.map((estudiante, index) => {
                                   // Obtener evaluaciones del estudiante
-                                  const evaluacionesEstudiante = evaluacionesGuardadas.filter(ev => 
-                                    ev.estudiante?.dni === estudiante.dni
+                                  const evaluacionesEstudiante = evaluacionesGuardadas.filter(
+                                    (ev) => ev.estudiante?.dni === estudiante.dni,
                                   );
-                                  
+
                                   if (evaluacionesEstudiante.length === 0) return null;
 
                                   // Calcular promedio general correctamente
                                   // 1. Agrupar evaluaciones por nombre
                                   const evaluacionesPorNombre: Record<string, any[]> = {};
                                   evaluacionesEstudiante.forEach((ev: any) => {
-                                    const nombreEval = ev.tipo_evaluacion.split(' - ')[0] || ev.tipo_evaluacion;
+                                    const nombreEval = ev.tipo_evaluacion.split(" - ")[0] || ev.tipo_evaluacion;
                                     if (!evaluacionesPorNombre[nombreEval]) {
                                       evaluacionesPorNombre[nombreEval] = [];
                                     }
@@ -949,14 +956,16 @@ const TeacherDashboard = () => {
                                   });
 
                                   // 2. Calcular promedio por cada evaluación
-                                  const promediosPorEvaluacion = Object.values(evaluacionesPorNombre).map(evals => {
-                                    return evals.reduce((acc, ev) => acc + (Number(ev.nota) * Number(ev.peso)), 0);
+                                  const promediosPorEvaluacion = Object.values(evaluacionesPorNombre).map((evals) => {
+                                    return evals.reduce((acc, ev) => acc + Number(ev.nota) * Number(ev.peso), 0);
                                   });
 
                                   // 3. Calcular promedio general (promedio de los promedios)
-                                  const promedio = promediosPorEvaluacion.length > 0
-                                    ? promediosPorEvaluacion.reduce((acc, p) => acc + p, 0) / promediosPorEvaluacion.length
-                                    : 0;
+                                  const promedio =
+                                    promediosPorEvaluacion.length > 0
+                                      ? promediosPorEvaluacion.reduce((acc, p) => acc + p, 0) /
+                                        promediosPorEvaluacion.length
+                                      : 0;
 
                                   return (
                                     <TableRow key={estudiante.id}>
@@ -967,13 +976,16 @@ const TeacherDashboard = () => {
                                       <TableCell>{estudiante.dni}</TableCell>
                                       <TableCell>
                                         <Badge variant="secondary">
-                                          {evaluacionesEstudiante.length} nota{evaluacionesEstudiante.length !== 1 ? 's' : ''}
+                                          {evaluacionesEstudiante.length} nota
+                                          {evaluacionesEstudiante.length !== 1 ? "s" : ""}
                                         </Badge>
                                       </TableCell>
                                       <TableCell>
-                                        <span className={`text-lg font-bold ${
-                                          promedio >= 10.5 ? "text-green-600" : "text-red-600"
-                                        }`}>
+                                        <span
+                                          className={`text-lg font-bold ${
+                                            promedio >= 10.5 ? "text-green-600" : "text-red-600"
+                                          }`}
+                                        >
                                           {promedio.toFixed(2)}
                                         </span>
                                       </TableCell>
@@ -1012,108 +1024,111 @@ const TeacherDashboard = () => {
                             </Label>
                             <Input
                               id="nombreEvaluacion"
-                              type="number"
-                              placeholder="Ej: Examen Parcial 1, Práctica Calificada, etc."
+                              type="tel" // Tipo de teléfono, que en móviles puede dar un teclado numérico
+                              placeholder="Ej: 123"
                               value={nombreEvaluacion}
-                              onChange={(e) => setNombreEvaluacion(e.target.value)}
+                              onChange={(e) => {
+                                const nuevoValor = e.target.value.replace(/[^0-9]/g, ""); // Asegura solo números
+                                setNombreEvaluacion(nuevoValor);
+                              }}
                               className="mt-2"
                             />
                           </div>
 
                           <div className="overflow-x-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-12">#</TableHead>
-                                <TableHead>Estudiante</TableHead>
-                                {competenciasEval.map((comp) => (
-                                  <TableHead key={comp.id}>
-                                    <div>
-                                      <div className="font-semibold">{comp.nombre}</div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {comp.porcentaje}%
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-12">#</TableHead>
+                                  <TableHead>Estudiante</TableHead>
+                                  {competenciasEval.map((comp) => (
+                                    <TableHead key={comp.id}>
+                                      <div>
+                                        <div className="font-semibold">{comp.nombre}</div>
+                                        <div className="text-xs text-muted-foreground">{comp.porcentaje}%</div>
                                       </div>
-                                    </div>
+                                    </TableHead>
+                                  ))}
+                                  <TableHead>
+                                    <div className="font-semibold text-primary">Promedio</div>
                                   </TableHead>
-                                ))}
-                                <TableHead>
-                                  <div className="font-semibold text-primary">Promedio</div>
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {estudiantesEval.map((estudiante, index) => {
-                                // Calcular promedio ponderado
-                                const calcularPromedio = () => {
-                                  const notasEstudiante = notas[estudiante.id] || {};
-                                  let sumaNotas = 0;
-                                  let sumaPorcentajes = 0;
-                                  
-                                  competenciasEval.forEach((comp) => {
-                                    const nota = parseFloat(notasEstudiante[comp.id] || "0");
-                                    const porcentaje = parseFloat(comp.porcentaje.toString());
-                                    if (!isNaN(nota) && !isNaN(porcentaje)) {
-                                      sumaNotas += (nota * porcentaje) / 100;
-                                      sumaPorcentajes += porcentaje;
-                                    }
-                                  });
-                                  
-                                  return sumaPorcentajes > 0 ? sumaNotas : 0;
-                                };
-                                
-                                const promedio = calcularPromedio();
-                                
-                                return (
-                                  <TableRow key={estudiante.id}>
-                                    <TableCell>{index + 1}</TableCell>
-                                    <TableCell>
-                                      {estudiante.apellidos}, {estudiante.nombres}
-                                    </TableCell>
-                                    {competenciasEval.map((comp) => (
-                                      <TableCell key={comp.id}>
-                                        <Input
-                                          type="number"
-                                          step="0.1"
-                                          min="0"
-                                          max="20"
-                                          className="w-20"
-                                          value={notas[estudiante.id]?.[comp.id] || ""}
-                                          onChange={(e) => 
-                                            setNotas(prev => ({
-                                              ...prev,
-                                              [estudiante.id]: {
-                                                ...prev[estudiante.id],
-                                                [comp.id]: e.target.value
-                                              }
-                                            }))
-                                          }
-                                          placeholder="0-20"
-                                        />
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {estudiantesEval.map((estudiante, index) => {
+                                  // Calcular promedio ponderado
+                                  const calcularPromedio = () => {
+                                    const notasEstudiante = notas[estudiante.id] || {};
+                                    let sumaNotas = 0;
+                                    let sumaPorcentajes = 0;
+
+                                    competenciasEval.forEach((comp) => {
+                                      const nota = parseFloat(notasEstudiante[comp.id] || "0");
+                                      const porcentaje = parseFloat(comp.porcentaje.toString());
+                                      if (!isNaN(nota) && !isNaN(porcentaje)) {
+                                        sumaNotas += (nota * porcentaje) / 100;
+                                        sumaPorcentajes += porcentaje;
+                                      }
+                                    });
+
+                                    return sumaPorcentajes > 0 ? sumaNotas : 0;
+                                  };
+
+                                  const promedio = calcularPromedio();
+
+                                  return (
+                                    <TableRow key={estudiante.id}>
+                                      <TableCell>{index + 1}</TableCell>
+                                      <TableCell>
+                                        {estudiante.apellidos}, {estudiante.nombres}
                                       </TableCell>
-                                    ))}
-                                    <TableCell>
-                                      <span className={`text-lg font-bold ${
-                                        promedio >= 10.5 ? "text-green-600" : "text-red-600"
-                                      }`}>
-                                        {promedio.toFixed(2)}
-                                      </span>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
+                                      {competenciasEval.map((comp) => (
+                                        <TableCell key={comp.id}>
+                                          <Input
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            max="20"
+                                            className="w-20"
+                                            value={notas[estudiante.id]?.[comp.id] || ""}
+                                            onChange={(e) =>
+                                              setNotas((prev) => ({
+                                                ...prev,
+                                                [estudiante.id]: {
+                                                  ...prev[estudiante.id],
+                                                  [comp.id]: e.target.value,
+                                                },
+                                              }))
+                                            }
+                                            placeholder="0-20"
+                                          />
+                                        </TableCell>
+                                      ))}
+                                      <TableCell>
+                                        <span
+                                          className={`text-lg font-bold ${
+                                            promedio >= 10.5 ? "text-green-600" : "text-red-600"
+                                          }`}
+                                        >
+                                          {promedio.toFixed(2)}
+                                        </span>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
                           </div>
 
                           <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               onClick={() => {
                                 setNombreEvaluacion("");
                                 const notasInit: Record<string, Record<string, string>> = {};
-                                estudiantesEval.forEach(est => {
+                                estudiantesEval.forEach((est) => {
                                   notasInit[est.id] = {};
-                                  competenciasEval.forEach(comp => {
+                                  competenciasEval.forEach((comp) => {
                                     notasInit[est.id][comp.id] = "";
                                   });
                                 });
@@ -1145,20 +1160,21 @@ const TeacherDashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Estadísticas del Aula</CardTitle>
-                  <CardDescription>
-                    Visualiza el rendimiento general de tus clases
-                  </CardDescription>
+                  <CardDescription>Visualiza el rendimiento general de tus clases</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Selector de Salón */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>Seleccionar Salón</Label>
-                      <Select value={selectedSalonStats} onValueChange={(value) => {
-                        setSelectedSalonStats(value);
-                        setStatsViewType("general");
-                        setSelectedCursoStats("");
-                      }}>
+                      <Select
+                        value={selectedSalonStats}
+                        onValueChange={(value) => {
+                          setSelectedSalonStats(value);
+                          setStatsViewType("general");
+                          setSelectedCursoStats("");
+                        }}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione un salón" />
                         </SelectTrigger>
@@ -1175,12 +1191,15 @@ const TeacherDashboard = () => {
                     {selectedSalonStats && (
                       <div>
                         <Label>Tipo de Vista</Label>
-                        <Select value={statsViewType} onValueChange={(value: "general" | "curso") => {
-                          setStatsViewType(value);
-                          if (value === "general") {
-                            setSelectedCursoStats("");
-                          }
-                        }}>
+                        <Select
+                          value={statsViewType}
+                          onValueChange={(value: "general" | "curso") => {
+                            setStatsViewType(value);
+                            if (value === "general") {
+                              setSelectedCursoStats("");
+                            }
+                          }}
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -1203,8 +1222,8 @@ const TeacherDashboard = () => {
                         </SelectTrigger>
                         <SelectContent>
                           {salonCursos
-                            .filter(sc => {
-                              const salon = salones.find(s => s.id === selectedSalonStats);
+                            .filter((sc) => {
+                              const salon = salones.find((s) => s.id === selectedSalonStats);
                               return salon;
                             })
                             .map((sc) => (
@@ -1224,9 +1243,7 @@ const TeacherDashboard = () => {
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-base">Rendimiento por Notas</CardTitle>
-                          <CardDescription>
-                            Distribución de aprobados y reprobados
-                          </CardDescription>
+                          <CardDescription>Distribución de aprobados y reprobados</CardDescription>
                         </CardHeader>
                         <CardContent>
                           <ResponsiveContainer width="100%" height={300}>
@@ -1236,7 +1253,7 @@ const TeacherDashboard = () => {
                                 cx="50%"
                                 cy="50%"
                                 labelLine={false}
-                                label={({ name, value, percent }) => 
+                                label={({ name, value, percent }) =>
                                   `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
                                 }
                                 outerRadius={80}
@@ -1258,9 +1275,7 @@ const TeacherDashboard = () => {
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-base">Asistencias</CardTitle>
-                          <CardDescription>
-                            Distribución de asistencias registradas
-                          </CardDescription>
+                          <CardDescription>Distribución de asistencias registradas</CardDescription>
                         </CardHeader>
                         <CardContent>
                           <ResponsiveContainer width="100%" height={300}>
@@ -1270,7 +1285,7 @@ const TeacherDashboard = () => {
                                 cx="50%"
                                 cy="50%"
                                 labelLine={false}
-                                label={({ name, value, percent }) => 
+                                label={({ name, value, percent }) =>
                                   `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
                                 }
                                 outerRadius={80}
@@ -1311,9 +1326,7 @@ const TeacherDashboard = () => {
       <Dialog open={verEstudiantesOpen} onOpenChange={setVerEstudiantesOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
-              Estudiantes del Salón {selectedSalon?.codigo}
-            </DialogTitle>
+            <DialogTitle>Estudiantes del Salón {selectedSalon?.codigo}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {estudiantesDelSalon.length > 0 ? (
@@ -1336,9 +1349,7 @@ const TeacherDashboard = () => {
                 </TableBody>
               </Table>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No hay estudiantes asignados a este salón
-              </div>
+              <div className="text-center py-8 text-muted-foreground">No hay estudiantes asignados a este salón</div>
             )}
             <div className="flex justify-end">
               <Button variant="outline" onClick={() => setVerEstudiantesOpen(false)}>
@@ -1362,10 +1373,10 @@ const TeacherDashboard = () => {
               {/* Agrupar evaluaciones por nombre */}
               {(() => {
                 const evaluacionesPorNombre: Record<string, any[]> = {};
-                
+
                 // Agrupar por el nombre de la evaluación (extraer el nombre antes del " - ")
                 estudianteSeleccionado.evaluaciones?.forEach((ev: any) => {
-                  const nombreEval = ev.tipo_evaluacion.split(' - ')[0] || ev.tipo_evaluacion;
+                  const nombreEval = ev.tipo_evaluacion.split(" - ")[0] || ev.tipo_evaluacion;
                   if (!evaluacionesPorNombre[nombreEval]) {
                     evaluacionesPorNombre[nombreEval] = [];
                   }
@@ -1375,15 +1386,17 @@ const TeacherDashboard = () => {
                 // Calcular promedios por evaluación
                 const promediosPorEvaluacion = Object.entries(evaluacionesPorNombre).map(([nombre, evals]) => {
                   const promedio = evals.reduce((acc, ev) => {
-                    return acc + (Number(ev.nota) * Number(ev.peso));
+                    return acc + Number(ev.nota) * Number(ev.peso);
                   }, 0);
                   return { nombre, promedio, evaluaciones: evals };
                 });
 
                 // Calcular promedio general (promedio de los promedios)
-                const promedioGeneral = promediosPorEvaluacion.length > 0
-                  ? promediosPorEvaluacion.reduce((acc, item) => acc + item.promedio, 0) / promediosPorEvaluacion.length
-                  : 0;
+                const promedioGeneral =
+                  promediosPorEvaluacion.length > 0
+                    ? promediosPorEvaluacion.reduce((acc, item) => acc + item.promedio, 0) /
+                      promediosPorEvaluacion.length
+                    : 0;
 
                 return (
                   <>
@@ -1399,9 +1412,11 @@ const TeacherDashboard = () => {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Promedio General</p>
-                        <p className={`text-2xl font-bold ${
-                          promedioGeneral >= 10.5 ? "text-green-600" : "text-red-600"
-                        }`}>
+                        <p
+                          className={`text-2xl font-bold ${
+                            promedioGeneral >= 10.5 ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
                           {promedioGeneral.toFixed(2)}
                         </p>
                       </div>
@@ -1415,9 +1430,9 @@ const TeacherDashboard = () => {
                             <CardTitle className="text-lg">{nombre}</CardTitle>
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Promedio de esta evaluación</p>
-                              <p className={`text-xl font-bold ${
-                                promedio >= 10.5 ? "text-green-600" : "text-red-600"
-                              }`}>
+                              <p
+                                className={`text-xl font-bold ${promedio >= 10.5 ? "text-green-600" : "text-red-600"}`}
+                              >
                                 {promedio.toFixed(2)}
                               </p>
                             </div>
@@ -1437,7 +1452,9 @@ const TeacherDashboard = () => {
                             <TableBody>
                               {evaluaciones.map((evaluacion: any) => (
                                 <TableRow key={evaluacion.id}>
-                                  <TableCell>{evaluacion.tipo_evaluacion.split(' - ')[1] || evaluacion.tipo_evaluacion}</TableCell>
+                                  <TableCell>
+                                    {evaluacion.tipo_evaluacion.split(" - ")[1] || evaluacion.tipo_evaluacion}
+                                  </TableCell>
                                   <TableCell>
                                     {editandoEvaluacion === evaluacion.id ? (
                                       <Input
@@ -1447,20 +1464,26 @@ const TeacherDashboard = () => {
                                         max="20"
                                         defaultValue={evaluacion.nota}
                                         className="w-20"
-                                        onBlur={(e) => handleEditarEvaluacion(evaluacion.id, parseFloat(e.target.value))}
+                                        onBlur={(e) =>
+                                          handleEditarEvaluacion(evaluacion.id, parseFloat(e.target.value))
+                                        }
                                         autoFocus
                                       />
                                     ) : (
-                                      <span className={`text-lg font-bold ${
-                                        evaluacion.nota >= 10.5 ? "text-green-600" : "text-red-600"
-                                      }`}>
+                                      <span
+                                        className={`text-lg font-bold ${
+                                          evaluacion.nota >= 10.5 ? "text-green-600" : "text-red-600"
+                                        }`}
+                                      >
                                         {evaluacion.nota}
                                       </span>
                                     )}
                                   </TableCell>
                                   <TableCell>{(evaluacion.peso * 100).toFixed(0)}%</TableCell>
                                   <TableCell>
-                                    {evaluacion.fecha_evaluacion ? format(new Date(evaluacion.fecha_evaluacion), "dd/MM/yyyy") : '-'}
+                                    {evaluacion.fecha_evaluacion
+                                      ? format(new Date(evaluacion.fecha_evaluacion), "dd/MM/yyyy")
+                                      : "-"}
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center justify-center gap-2">
