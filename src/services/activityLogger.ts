@@ -70,35 +70,28 @@ export interface ActivityLog {
  */
 class ActivityLogger {
   /**
-   * Llama a la Edge Function para registrar actividad
+   * NOTA: MongoDB deshabilitado temporalmente debido a problemas de conexión.
+   * Los logs se registran en consola hasta que se configure correctamente.
    */
   private async callEdgeFunction(action: string, data: any): Promise<any> {
-    try {
-      const { data: result, error } = await supabase.functions.invoke('activity-logger', {
-        body: { action, ...data },
-      });
-
-      if (error) throw error;
-      return result;
-    } catch (error) {
-      console.error('❌ Error al llamar Edge Function:', error);
-      return null;
-    }
+    // Temporalmente deshabilitado - solo log en consola
+    console.log('📝 [Activity Logger - Temporalmente en consola]', { action, ...data });
+    return null;
   }
 
   /**
-   * Registra una actividad
+   * Registra una actividad (actualmente solo en consola)
    */
   async log(logData: Omit<ActivityLog, '_id' | 'timestamp' | 'created_at'>): Promise<string | null> {
     try {
-      const result = await this.callEdgeFunction('log', logData);
-      
-      if (result?.success) {
-        console.log('✅ Actividad registrada:', logData.activity_type);
-        return result.log_id;
-      }
-      
-      return null;
+      // Temporalmente solo log en consola
+      console.log('✅ Actividad:', {
+        type: logData.activity_type,
+        module: logData.module,
+        description: logData.action_description,
+        user: logData.user_email,
+      });
+      return 'console-log';
     } catch (error) {
       console.error('❌ Error al registrar actividad:', error);
       return null;
@@ -317,63 +310,39 @@ class ActivityLogger {
   }
 
   /**
-   * Obtiene los últimos logs de un usuario
+   * Obtiene los últimos logs de un usuario (temporalmente retorna vacío)
    */
   async getUserLogs(userId: string, limit: number = 50) {
-    try {
-      const result = await this.callEdgeFunction('get_user_logs', { user_id: userId, limit });
-      return result?.logs || [];
-    } catch (error) {
-      console.error('Error al obtener logs del usuario:', error);
-      return [];
-    }
+    console.log('📊 getUserLogs llamado para:', userId);
+    return []; // Temporalmente vacío
   }
 
   /**
-   * Obtiene logs por módulo
+   * Obtiene logs por módulo (temporalmente retorna vacío)
    */
   async getModuleLogs(module: ActivityModule, limit: number = 100) {
-    try {
-      const result = await this.callEdgeFunction('get_module_logs', { module, limit });
-      return result?.logs || [];
-    } catch (error) {
-      console.error('Error al obtener logs del módulo:', error);
-      return [];
-    }
+    console.log('📊 getModuleLogs llamado para:', module);
+    return []; // Temporalmente vacío
   }
 
   /**
-   * Obtiene logs recientes del sistema
+   * Obtiene logs recientes del sistema (temporalmente retorna vacío)
    */
   async getRecentLogs(limit: number = 100) {
-    try {
-      const result = await this.callEdgeFunction('get_recent_logs', { limit });
-      return result?.logs || [];
-    } catch (error) {
-      console.error('Error al obtener logs recientes:', error);
-      return [];
-    }
+    console.log('📊 getRecentLogs llamado');
+    return []; // Temporalmente vacío
   }
 
   /**
-   * Estadísticas de actividad
+   * Estadísticas de actividad (temporalmente retorna ceros)
    */
   async getActivityStats(userId?: string) {
-    try {
-      const result = await this.callEdgeFunction('get_stats', { user_id: userId });
-      return result?.stats || {
-        total_logs: 0,
-        logs_hoy: 0,
-        total_logins: 0,
-      };
-    } catch (error) {
-      console.error('Error al obtener estadísticas:', error);
-      return {
-        total_logs: 0,
-        logs_hoy: 0,
-        total_logins: 0,
-      };
-    }
+    console.log('📊 getActivityStats llamado');
+    return {
+      total_logs: 0,
+      logs_hoy: 0,
+      total_logins: 0,
+    };
   }
 }
 
