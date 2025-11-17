@@ -53,39 +53,6 @@ const activityColors: Record<string, string> = {
 
 export default function LogsViewer() {
   const { role } = useAuth();
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    total_logs: 0,
-    logs_hoy: 0,
-    total_logins: 0,
-  });
-
-  useEffect(() => {
-    loadLogs();
-    loadStats();
-  }, []);
-
-  const loadLogs = async () => {
-    try {
-      setLoading(true);
-      const recentLogs = await activityLogger.getRecentLogs(100);
-      setLogs(recentLogs);
-    } catch (error) {
-      console.error('Error al cargar logs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const statistics = await activityLogger.getActivityStats();
-      setStats(statistics);
-    } catch (error) {
-      console.error('Error al cargar estadísticas:', error);
-    }
-  };
 
   // Solo admins pueden ver los logs
   if (role !== 'admin') {
@@ -107,119 +74,69 @@ export default function LogsViewer() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Logs de Actividad del Sistema</h1>
         <Badge variant="outline" className="text-sm">
-          MongoDB NoSQL
+          MongoDB (Temporalmente Deshabilitado)
         </Badge>
       </div>
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Logs</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total_logs}</div>
-            <p className="text-xs text-muted-foreground">Registros totales</p>
-          </CardContent>
-        </Card>
+      <Card className="border-orange-200 bg-orange-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-orange-900">
+            <AlertTriangle className="h-5 w-5" />
+            Sistema de Logging Temporalmente Deshabilitado
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm text-orange-800 space-y-2">
+            <p className="font-medium">MongoDB no está disponible actualmente debido a problemas de conexión.</p>
+            
+            <div className="pl-4 space-y-1">
+              <p><strong>Estado actual:</strong> Los logs se registran en la consola del navegador</p>
+              <p><strong>Causa:</strong> Driver de MongoDB incompatible con Deno/Edge Functions</p>
+            </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Actividad Hoy</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.logs_hoy}</div>
-            <p className="text-xs text-muted-foreground">Registros hoy</p>
-          </CardContent>
-        </Card>
+            <div className="mt-4 p-3 bg-white rounded border border-orange-200">
+              <p className="font-medium mb-2">Opciones disponibles:</p>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>Usar solo PostgreSQL para logs (más simple y ya funciona)</li>
+                <li>Configurar MongoDB correctamente con un driver compatible</li>
+                <li>Ver logs en la consola del navegador (F12 → Console)</li>
+              </ul>
+            </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Logins</CardTitle>
-            <LogIn className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total_logins}</div>
-            <p className="text-xs text-muted-foreground">Inicios de sesión</p>
-          </CardContent>
-        </Card>
-      </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+              <p className="font-medium text-blue-900 mb-2">📊 Ver logs actuales:</p>
+              <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800">
+                <li>Presiona <kbd className="px-2 py-1 bg-white rounded border">F12</kbd> para abrir Developer Tools</li>
+                <li>Ve a la pestaña <strong>Console</strong></li>
+                <li>Los logs aparecen con formato: <code className="px-1 bg-white rounded">✅ Actividad: &#123;...&#125;</code></li>
+              </ol>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Lista de logs */}
       <Card>
         <CardHeader>
-          <CardTitle>Actividad Reciente</CardTitle>
+          <CardTitle>Estadísticas (Inactivas)</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Cargando logs...</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 border rounded-lg opacity-50">
+              <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <div className="text-2xl font-bold text-muted-foreground">0</div>
+              <p className="text-xs text-muted-foreground">Total de Logs</p>
             </div>
-          ) : logs.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No hay logs disponibles</p>
+            <div className="text-center p-4 border rounded-lg opacity-50">
+              <Activity className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <div className="text-2xl font-bold text-muted-foreground">0</div>
+              <p className="text-xs text-muted-foreground">Actividad Hoy</p>
             </div>
-          ) : (
-            <ScrollArea className="h-[600px] w-full">
-              <div className="space-y-4">
-                {logs.map((log) => {
-                  const Icon = activityIcons[log.activity_type] || Activity;
-                  const color = activityColors[log.activity_type] || 'bg-gray-500';
-
-                  return (
-                    <div
-                      key={log._id}
-                      className="flex items-start space-x-4 p-4 border rounded-lg hover:bg-accent transition-colors"
-                    >
-                      <div className={`${color} p-2 rounded-full text-white`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium">{log.action_description}</p>
-                          <Badge variant={log.success ? 'default' : 'destructive'}>
-                            {log.success ? 'Éxito' : 'Error'}
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <span>{log.user_email || log.user_id}</span>
-                          <span>•</span>
-                          <span>{log.module}</span>
-                          <span>•</span>
-                          <span>
-                            {format(new Date(log.timestamp), "d 'de' MMMM 'a las' HH:mm", {
-                              locale: es,
-                            })}
-                          </span>
-                        </div>
-
-                        {log.error_message && (
-                          <p className="text-sm text-destructive mt-2">
-                            Error: {log.error_message}
-                          </p>
-                        )}
-
-                        {log.metadata && Object.keys(log.metadata).length > 0 && (
-                          <details className="mt-2">
-                            <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground">
-                              Ver detalles
-                            </summary>
-                            <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-x-auto">
-                              {JSON.stringify(log.metadata, null, 2)}
-                            </pre>
-                          </details>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          )}
+            <div className="text-center p-4 border rounded-lg opacity-50">
+              <LogIn className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <div className="text-2xl font-bold text-muted-foreground">0</div>
+              <p className="text-xs text-muted-foreground">Total Logins</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
