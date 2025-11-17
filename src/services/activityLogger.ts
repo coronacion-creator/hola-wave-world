@@ -1,112 +1,106 @@
 /**
  * Servicio de Registro de Actividades (Activity Logger)
  * 
- * Este servicio registra todas las acciones de usuarios en MongoDB:
- * - Inicios de sesión (login/logout)
- * - Acciones CRUD (crear, actualizar, eliminar)
- * - Consultas importantes
- * - Errores y fallos de seguridad
+ * Este servicio se comunica con la Edge Function para registrar
+ * actividades en MongoDB (backend).
  */
 
-import { getCollection } from '@/integrations/mongodb/client';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Tipos de actividades que se pueden registrar
  */
 export type ActivityType = 
-  | 'login'              // Usuario inició sesión
-  | 'logout'             // Usuario cerró sesión
-  | 'signup'             // Nuevo usuario registrado
-  | 'create'             // Creó un registro
-  | 'update'             // Actualizó un registro
-  | 'delete'             // Eliminó un registro
-  | 'view'               // Consultó/visualizó datos
-  | 'export'             // Exportó datos
-  | 'payment'            // Procesó un pago
-  | 'error'              // Error en el sistema
-  | 'security_alert';    // Alerta de seguridad
+  | 'login'
+  | 'logout'
+  | 'signup'
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'view'
+  | 'export'
+  | 'payment'
+  | 'error'
+  | 'security_alert';
 
 /**
- * Módulos del sistema donde ocurren las actividades
+ * Módulos del sistema
  */
 export type ActivityModule = 
-  | 'auth'               // Autenticación
-  | 'estudiantes'        // Gestión de estudiantes
-  | 'profesores'         // Gestión de profesores
-  | 'cursos'             // Gestión de cursos
-  | 'matriculas'         // Matrículas
-  | 'pagos'              // Pagos y finanzas
-  | 'evaluaciones'       // Evaluaciones académicas
-  | 'inventario'         // Inventario
-  | 'reportes'           // Reportes y estadísticas
-  | 'configuracion';     // Configuración del sistema
+  | 'auth'
+  | 'estudiantes'
+  | 'profesores'
+  | 'cursos'
+  | 'matriculas'
+  | 'pagos'
+  | 'evaluaciones'
+  | 'inventario'
+  | 'reportes'
+  | 'configuracion';
 
 /**
- * Interfaz del documento de log en MongoDB
+ * Interfaz del documento de log
  */
 export interface ActivityLog {
   _id?: string;
-  
-  // Usuario que realiza la acción
   user_id: string;
   user_email?: string;
   user_role?: string;
-  
-  // Detalles de la actividad
   activity_type: ActivityType;
   module: ActivityModule;
   action_description: string;
-  
-  // Datos adicionales (flexible)
   metadata?: {
-    entity_id?: string;           // ID del registro afectado
-    entity_type?: string;          // Tipo de entidad (ej: 'estudiante')
-    previous_data?: any;           // Datos antes del cambio
-    new_data?: any;                // Datos después del cambio
-    ip_address?: string;           // IP del usuario
-    user_agent?: string;           // Navegador del usuario
-    [key: string]: any;            // Otros datos personalizados
+    entity_id?: string;
+    entity_type?: string;
+    previous_data?: any;
+    new_data?: any;
+    ip_address?: string;
+    user_agent?: string;
+    [key: string]: any;
   };
-  
-  // Timestamps
   timestamp: Date;
   created_at: Date;
-  
-  // Contexto técnico
   success: boolean;
   error_message?: string;
-  duration_ms?: number;            // Duración de la operación
+  duration_ms?: number;
 }
 
 /**
  * Clase principal del Activity Logger
  */
 class ActivityLogger {
-  private collectionName = 'activity_logs';
+  /**
+   * Llama a la Edge Function para registrar actividad
+   */
+  private async callEdgeFunction(action: string, data: any): Promise<any> {
+    try {
+      const { data: result, error } = await supabase.functions.invoke('activity-logger', {
+        body: { action, ...data },
+      });
+
+      if (error) throw error;
+      return result;
+    } catch (error) {
+      console.error('❌ Error al llamar Edge Function:', error);
+      return null;
+    }
+  }
 
   /**
-   * Registra una actividad en MongoDB
-   * 
-   * @param logData - Datos de la actividad a registrar
-   * @returns ID del log insertado
+   * Registra una actividad
    */
   async log(logData: Omit<ActivityLog, '_id' | 'timestamp' | 'created_at'>): Promise<string | null> {
     try {
-      const collection = await getCollection<ActivityLog>(this.collectionName);
+      const result = await this.callEdgeFunction('log', logData);
       
-      const document: ActivityLog = {
-        ...logData,
-        timestamp: new Date(),
-        created_at: new Date(),
-      };
-
-      const result = await collection.insertOne(document);
-      console.log('✅ Actividad registrada:', logData.activity_type, logData.action_description);
+      if (result?.success) {
+        console.log('✅ Actividad registrada:', logData.activity_type);
+        return result.log_id;
+      }
       
-      return result.insertedId.toString();
+      return null;
     } catch (error) {
       console.error('❌ Error al registrar actividad:', error);
-      // No lanzamos el error para no interrumpir el flujo principal
       return null;
     }
   }
@@ -124,7 +118,6 @@ class ActivityLogger {
       action_description: `Usuario ${userEmail} inició sesión`,
       success: true,
       metadata: {
-        ip_address: await this.getClientIP(),
         user_agent: navigator.userAgent,
       },
     });
@@ -157,7 +150,6 @@ class ActivityLogger {
       success: false,
       error_message: errorMessage,
       metadata: {
-        ip_address: await this.getClientIP(),
         user_agent: navigator.userAgent,
       },
     });
@@ -329,15 +321,8 @@ class ActivityLogger {
    */
   async getUserLogs(userId: string, limit: number = 50) {
     try {
-      const collection = await getCollection<ActivityLog>(this.collectionName);
-      
-      const logs = await collection
-        .find({ user_id: userId })
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .toArray();
-      
-      return logs;
+      const result = await this.callEdgeFunction('get_user_logs', { user_id: userId, limit });
+      return result?.logs || [];
     } catch (error) {
       console.error('Error al obtener logs del usuario:', error);
       return [];
@@ -349,15 +334,8 @@ class ActivityLogger {
    */
   async getModuleLogs(module: ActivityModule, limit: number = 100) {
     try {
-      const collection = await getCollection<ActivityLog>(this.collectionName);
-      
-      const logs = await collection
-        .find({ module })
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .toArray();
-      
-      return logs;
+      const result = await this.callEdgeFunction('get_module_logs', { module, limit });
+      return result?.logs || [];
     } catch (error) {
       console.error('Error al obtener logs del módulo:', error);
       return [];
@@ -369,15 +347,8 @@ class ActivityLogger {
    */
   async getRecentLogs(limit: number = 100) {
     try {
-      const collection = await getCollection<ActivityLog>(this.collectionName);
-      
-      const logs = await collection
-        .find({})
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .toArray();
-      
-      return logs;
+      const result = await this.callEdgeFunction('get_recent_logs', { limit });
+      return result?.logs || [];
     } catch (error) {
       console.error('Error al obtener logs recientes:', error);
       return [];
@@ -389,29 +360,11 @@ class ActivityLogger {
    */
   async getActivityStats(userId?: string) {
     try {
-      const collection = await getCollection<ActivityLog>(this.collectionName);
-      
-      const filter = userId ? { user_id: userId } : {};
-      
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-      
-      const [totalLogs, logsHoy, loginCount] = await Promise.all([
-        collection.countDocuments(filter),
-        collection.countDocuments({
-          ...filter,
-          timestamp: { $gte: hoy },
-        }),
-        collection.countDocuments({
-          ...filter,
-          activity_type: 'login',
-        }),
-      ]);
-      
-      return {
-        total_logs: totalLogs,
-        logs_hoy: logsHoy,
-        total_logins: loginCount,
+      const result = await this.callEdgeFunction('get_stats', { user_id: userId });
+      return result?.stats || {
+        total_logs: 0,
+        logs_hoy: 0,
+        total_logins: 0,
       };
     } catch (error) {
       console.error('Error al obtener estadísticas:', error);
@@ -420,19 +373,6 @@ class ActivityLogger {
         logs_hoy: 0,
         total_logins: 0,
       };
-    }
-  }
-
-  /**
-   * Obtiene la IP del cliente (mejor esfuerzo)
-   */
-  private async getClientIP(): Promise<string> {
-    try {
-      // En producción, esto debería venir del servidor
-      // Por ahora retornamos 'unknown'
-      return 'unknown';
-    } catch {
-      return 'unknown';
     }
   }
 }
