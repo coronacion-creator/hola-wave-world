@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { activityLogger } from '@/services/activityLogger';
 
 type UserRole = 'admin' | 'teacher' | 'student' | null;
 
@@ -88,6 +89,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userRole = data?.role as UserRole;
         setRole(userRole);
         
+        // 📝 Registrar login exitoso en MongoDB
+        await activityLogger.logLogin(
+          session.session.user.id,
+          email,
+          userRole || 'unknown'
+        );
+        
         // Redirect based on role
         if (userRole === 'admin') {
           navigate('/admin');
@@ -97,6 +105,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           navigate('/student');
         }
       }
+    } else {
+      // 📝 Registrar intento fallido de login
+      await activityLogger.logFailedLogin(email, error.message);
     }
     
     return { error };
@@ -120,12 +131,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await supabase.from('profiles').insert({
         user_id: data.user.id,
       });
+
+      // 📝 Registrar nuevo usuario en MongoDB
+      await activityLogger.log({
+        user_id: data.user.id,
+        user_email: email,
+        user_role: role || 'unknown',
+        activity_type: 'signup',
+        module: 'auth',
+        action_description: `Nuevo usuario registrado: ${email} con rol ${role}`,
+        success: true,
+        metadata: {
+          registration_method: 'email',
+        },
+      });
     }
 
     return { error };
   };
 
   const signOut = async () => {
+    // 📝 Registrar logout antes de cerrar sesión
+    if (user?.id && user?.email) {
+      await activityLogger.logLogout(user.id, user.email);
+    }
+    
     await supabase.auth.signOut();
     setRole(null);
     navigate('/auth');
